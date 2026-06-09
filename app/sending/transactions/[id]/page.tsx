@@ -31,7 +31,7 @@ interface FullTransaction extends Transaction {
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</dt>
+      <dt className="text-xs font-medium text-gray-400">{label}</dt>
       <dd className="mt-1 text-sm text-gray-900">{children}</dd>
     </div>
   );
@@ -258,7 +258,7 @@ export default function TransactionDetailPage() {
             Back to Transactions
           </Link>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold font-mono text-gray-900">{tx.transactionCode}</h1>
+            <h1 className="text-lg font-semibold font-mono text-gray-900">{tx.transactionCode}</h1>
             <TransactionStatusBadge status={tx.status} />
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${tx.codeType === 'ADDITIONAL' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
               {tx.codeType === 'ADDITIONAL' ? 'Immediate' : 'Standard'}
@@ -273,57 +273,43 @@ export default function TransactionDetailPage() {
         {/* LEFT — Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* People & Amounts */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Transaction Details</h2>
+              <h2 className="text-xs font-medium text-gray-400">Transaction Details</h2>
             </div>
             <div className="px-6 py-5">
               {/* Sender / Receiver */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-5 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase font-medium">Sender</p>
-                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{tx.sender?.firstName} {tx.sender?.lastName}</p>
-                    {tx.sender?.phone && <p className="text-xs text-gray-500">{tx.sender.phone}</p>}
-                  </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Sender</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">{tx.sender?.firstName} {tx.sender?.lastName}</p>
+                  {tx.sender?.phone && <p className="text-xs text-gray-500">{tx.sender.phone}</p>}
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase font-medium">{isMultiReceiver ? 'Primary Receiver' : 'Receiver'}</p>
-                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{tx.receiver?.firstName} {tx.receiver?.lastName}</p>
-                    {tx.receiver?.phone && <p className="text-xs text-gray-500">{tx.receiver.phone}</p>}
-                  </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">{isMultiReceiver ? 'Primary Receiver' : 'Receiver'}</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">{tx.receiver?.firstName} {tx.receiver?.lastName}</p>
+                  {tx.receiver?.phone && <p className="text-xs text-gray-500">{tx.receiver.phone}</p>}
                 </div>
               </div>
 
               {/* Amount highlights */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-5 border-b border-gray-100">
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-500 font-medium">CAD Sent</p>
-                  <p className="text-lg font-bold text-blue-700 mt-1">{fmtCAD(Number(tx.cadAmount))}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-green-500 font-medium">GHS Received</p>
-                  <p className="text-lg font-bold text-green-700 mt-1">{fmtGHS(Number(tx.ghsAmount))}</p>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-400 font-medium">CAD Sent</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-1">{fmtCAD(Number(tx.cadAmount))}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500 font-medium">Paid</p>
-                  <p className="text-lg font-bold text-gray-700 mt-1">{fmtCAD(Number(tx.amountPaidCAD))}</p>
+                  <p className="text-xs text-gray-400 font-medium">GHS Received</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-1">{fmtGHS(Number(tx.ghsAmount))}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-400 font-medium">Paid</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-1">{fmtCAD(Number(tx.amountPaidCAD))}</p>
                 </div>
                 {Number(tx.amountPendingCAD) > 0 ? (
-                  <div className="bg-orange-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-orange-500 font-medium">Pending</p>
-                    <p className="text-lg font-bold text-orange-700 mt-1">{fmtCAD(Number(tx.amountPendingCAD))}</p>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-gray-400 font-medium">Pending</p>
+                    <p className="text-lg font-semibold text-orange-700 mt-1">{fmtCAD(Number(tx.amountPendingCAD))}</p>
                   </div>
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -385,7 +371,7 @@ export default function TransactionDetailPage() {
             const paidCount = allocs.filter((r) => r.isPaid).length;
             let running = totalGHS;
             return (
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 {/* Card header */}
                 <div className="px-5 py-4 border-b border-gray-100 bg-violet-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -422,16 +408,16 @@ export default function TransactionDetailPage() {
                 {/* KPI bar */}
                 <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
                   <div className="px-4 py-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Total GHS</p>
+                    <p className="text-[10px] font-medium text-gray-400">Total GHS</p>
                     <p className="text-base font-bold text-violet-700 mt-0.5">{fmtGHS(totalGHS)}</p>
                   </div>
                   <div className="px-4 py-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Paid Out</p>
+                    <p className="text-[10px] font-medium text-gray-400">Paid Out</p>
                     <p className="text-base font-bold text-emerald-600 mt-0.5">{fmtGHS(paidGHS)}</p>
                     <p className="text-[10px] text-gray-400">{paidCount} of {allocs.length}</p>
                   </div>
                   <div className="px-4 py-3 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Outstanding</p>
+                    <p className="text-[10px] font-medium text-gray-400">Outstanding</p>
                     <p className={`text-base font-bold mt-0.5 ${totalGHS - paidGHS > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{fmtGHS(totalGHS - paidGHS)}</p>
                     <p className="text-[10px] text-gray-400">{allocs.length - paidCount} pending</p>
                   </div>
@@ -479,13 +465,13 @@ export default function TransactionDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50/60 border-b border-gray-100">
-                        <th className="text-center py-3 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400 w-8">#</th>
-                        <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Receiver</th>
-                        <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">GHS Amount</th>
-                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Status</th>
-                        <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Paid At</th>
-                        <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Teller</th>
-                        <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Running Balance</th>
+                        <th className="text-center py-3 px-3 text-xs font-medium text-gray-400 w-8">#</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Receiver</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">GHS Amount</th>
+                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-400">Status</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Paid At</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Teller</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">Running Balance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -541,18 +527,18 @@ export default function TransactionDetailPage() {
 
           {/* Sub-payments */}
           {subPayments.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Partial Payments</h2>
+                <h2 className="text-xs font-medium text-gray-400">Partial Payments</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-5 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Paid By</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">GHS Amount</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                      <th className="text-left py-3 px-5 text-xs font-medium text-gray-400">Date</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Paid By</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">GHS Amount</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Notes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -572,11 +558,11 @@ export default function TransactionDetailPage() {
 
           {/* Ledger Entries — collapsible */}
           {(tx.ledgerEntries?.length ?? 0) > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowLedger((v) => !v)}
-                className="w-full flex items-center justify-between px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-4 text-xs font-medium text-gray-400 hover:bg-gray-50 transition-colors"
               >
                 <span>Ledger Entries ({tx.ledgerEntries!.length})</span>
                 <svg className={`w-4 h-4 transition-transform ${showLedger ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -616,8 +602,8 @@ export default function TransactionDetailPage() {
         {/* RIGHT — Status & Actions */}
         <div className="space-y-4">
           {/* Status card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Status</p>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-400 mb-4">Status</p>
             <div className="flex justify-center mb-5">
               <span className="text-base">
                 <TransactionStatusBadge status={tx.status} />
@@ -683,8 +669,8 @@ export default function TransactionDetailPage() {
           </div>
 
           {/* Quick info card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Quick Info</p>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-400 mb-4">Quick Info</p>
             <dl className="space-y-3">
               <InfoRow label="Transaction Date">
                 {new Date(tx.transactionDate ?? tx.createdAt).toLocaleDateString()}

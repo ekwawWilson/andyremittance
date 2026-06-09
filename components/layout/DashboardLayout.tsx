@@ -263,7 +263,7 @@ function ServerDateBar({ portal }: { portal: 'sending' | 'receiving' | 'admin' }
   }
 
   function fmt(d: string) {
-    return new Date(d + 'T12:00:00Z').toLocaleDateString('en-GH', {
+    return new Date(d + 'T12:00:00').toLocaleDateString('en-GH', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
     });
   }

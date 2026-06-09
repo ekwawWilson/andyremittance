@@ -253,15 +253,13 @@ export default function TransactionsPage() {
   };
 
   const rowBg = (t: Transaction) => {
-    if (t.status === 'PARTIAL' || t.status === 'PARTIAL_PAYMENT')   return 'bg-orange-50/50 hover:bg-orange-50';
-    if (t.status === 'PAID')      return 'bg-green-50/30 hover:bg-green-50/60';
     if (t.status === 'CANCELLED') return 'opacity-50 hover:opacity-70';
-    return 'hover:bg-blue-50/30';
+    return 'hover:bg-gray-50';
   };
 
   const inputCls  = 'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-shadow bg-white';
   const labelCls  = 'block text-xs font-semibold text-gray-600 mb-1.5';
-  const sectionHdr = 'text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-5 mb-2 pb-1.5 border-b border-gray-100';
+  const sectionHdr = 'text-xs font-medium text-gray-400 mt-5 mb-2 pb-1 border-b border-gray-100';
 
   return (
     <div className="space-y-5">
@@ -269,7 +267,7 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Transactions</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Transactions</h1>
           <p className="text-sm text-gray-400 mt-0.5">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -282,7 +280,7 @@ export default function TransactionsPage() {
             </Button>
           )}
           <Link href="/sending/transactions/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 shadow-sm hover:shadow-md transition-all">
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -303,7 +301,7 @@ export default function TransactionsPage() {
       )}
 
       {/* Filter bar */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-col gap-3">
           {/* Search — full width */}
           <div className="relative">
@@ -349,7 +347,7 @@ export default function TransactionsPage() {
       )}
 
       {/* Transactions list */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-48">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-blue-600 border-t-transparent" />
@@ -359,7 +357,7 @@ export default function TransactionsPage() {
             {/* ── Mobile card list (hidden sm+) ──────────────────────────── */}
             <div className="sm:hidden divide-y divide-gray-100">
               {filtered.map((t) => (
-                <div key={t.id} className={`px-4 py-3.5 ${t.status === 'PARTIAL' || t.status === 'PARTIAL_PAYMENT' ? 'bg-orange-50/40' : t.status === 'PAID' ? 'bg-green-50/20' : ''}`}>
+                <div key={t.id} className="px-4 py-3.5">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <Link href={`/sending/transactions/${t.id}`} className="font-mono font-bold text-blue-600 text-xs">
                       {t.transactionCode}
@@ -411,14 +409,14 @@ export default function TransactionsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100">
-                    <th className="text-left py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Code</th>
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sender → Receiver</th>
-                    {canViewAll && <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Agent</th>}
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">CAD</th>
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">GHS</th>
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Branch / Mode</th>
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
-                    <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Actions</th>
+                    <th className="text-left py-3.5 px-5 text-xs font-medium text-gray-400">Code</th>
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">Sender → Receiver</th>
+                    {canViewAll && <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">Agent</th>}
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">CAD</th>
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">GHS</th>
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">Branch / Mode</th>
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">Status</th>
+                    <th className="text-left py-3.5 px-4 text-xs font-medium text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -503,14 +501,9 @@ export default function TransactionsPage() {
             </div>
           </>
         ) : (
-          <div className="py-20 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <p className="text-gray-500 font-medium">No transactions found</p>
-            <p className="text-gray-400 text-sm mt-1">Try adjusting your filters</p>
+          <div className="py-16 text-center">
+            <p className="text-sm text-gray-500">No transactions found</p>
+            <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
           </div>
         )}
       </div>

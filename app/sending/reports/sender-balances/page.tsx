@@ -81,7 +81,7 @@ export default function SenderBalancesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sender Balances</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Sender Balances</h1>
         {filtered.length > 0 && (
           <ExportButtons title="Sender Balances" filename={`sender-balances-${new Date().toISOString().split('T')[0]}`} headers={exportHeaders} rows={exportRows} summary={exportSummary} />
         )}
@@ -91,26 +91,26 @@ export default function SenderBalancesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Total Senders</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{withBalance.length}</p>
+            <p className="text-xs text-gray-400 font-medium">Total Senders</p>
+            <p className="text-xl font-semibold text-gray-900 mt-1">{withBalance.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Outstanding</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">{outstanding.length}</p>
+            <p className="text-xs text-gray-400 font-medium">Outstanding</p>
+            <p className="text-xl font-semibold text-red-600 mt-1">{outstanding.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Total Owing</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">{fmtCAD(totalOwing)}</p>
+            <p className="text-xs text-gray-400 font-medium">Total Owing</p>
+            <p className="text-xl font-semibold text-red-600 mt-1">{fmtCAD(totalOwing)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Zero Balance</p>
-            <p className="text-2xl font-bold text-gray-600 mt-1">{zeroBal.length}</p>
+            <p className="text-xs text-gray-400 font-medium">Zero Balance</p>
+            <p className="text-xl font-semibold text-gray-600 mt-1">{zeroBal.length}</p>
           </CardContent>
         </Card>
       </div>

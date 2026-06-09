@@ -42,7 +42,7 @@ export default function EodHistoryPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <button onClick={() => router.push('/sending/eod')} className="text-blue-600 hover:underline text-sm mb-1 block">&larr; Back to End of Day</button>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">EOD History</h1>
+          <h1 className="text-lg font-semibold text-gray-900">EOD History</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} end-of-day records</p>
         </div>
       </div>

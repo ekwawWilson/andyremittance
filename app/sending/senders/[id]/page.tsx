@@ -119,7 +119,7 @@ export default function SenderDetailPage() {
             Statement
           </Link>
           <Link href={`/sending/transactions/new`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             New Tx
           </Link>
@@ -127,7 +127,7 @@ export default function SenderDetailPage() {
       </div>
 
       {/* Profile hero */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="bg-linear-to-r from-blue-600 to-blue-500 px-6 pt-8 pb-16 relative">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_70%_50%,white,transparent)]" />
         </div>
@@ -157,7 +157,7 @@ export default function SenderDetailPage() {
               { label: 'Account Code', value: sender.senderLedger?.accountCode ?? '—' },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+                <p className="text-xs text-gray-400">{label}</p>
                 <p className="text-sm text-gray-700 mt-0.5 truncate">{value}</p>
               </div>
             ))}
@@ -168,8 +168,8 @@ export default function SenderDetailPage() {
       {/* Balance + credit limit + actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Balance card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Account Balance</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="text-xs font-medium text-gray-400 mb-3">Account Balance</p>
           <p className={`text-3xl font-bold tracking-tight ${isDebt ? 'text-red-600' : 'text-green-700'}`}>
             ${fmt(Math.abs(balance))}
             <span className="text-base font-medium ml-1">{isDebt ? 'owing' : 'credit'}</span>
@@ -209,15 +209,15 @@ export default function SenderDetailPage() {
               { label: 'Last 30 Days', v: sender.volume.last30Days, color: 'text-blue-700' },
               { label: `YTD ${new Date().getFullYear()}`, v: sender.volume.ytd, color: 'text-purple-700' },
             ] as const).map(({ label, v, color }) => (
-              <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{label}</p>
+              <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-xs font-medium text-gray-400 mb-1">{label}</p>
                 <p className={`text-2xl font-bold tracking-tight ${color}`}>${fmt(v.cadAmount)}</p>
                 <p className="text-xs text-gray-400 mt-1">{v.count} transaction{v.count !== 1 ? 's' : ''}</p>
                 <div className="mt-3 pt-3 border-t border-gray-50 grid grid-cols-3 gap-2 text-center">
                   {(['PENDING', 'SYNCED', 'PAID'] as const).map((s) => (
                     <div key={s}>
                       <p className="text-lg font-bold text-gray-800">{statusCounts[s] ?? 0}</p>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{s}</p>
+                      <p className="text-[10px] text-gray-400">{s}</p>
                     </div>
                   ))}
                 </div>
@@ -228,7 +228,7 @@ export default function SenderDetailPage() {
       </div>
 
       {/* Receivers */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-800">Receivers</h2>
           <span className="text-xs text-gray-400">{sender.receivers?.length ?? 0} on file</span>
@@ -239,7 +239,7 @@ export default function SenderDetailPage() {
               <thead>
                 <tr className="bg-gray-50/60 border-b border-gray-100">
                   {['Name', 'Phone', 'Payout Method', 'Account Details', 'Relationship'].map((h) => (
-                    <th key={h} className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                    <th key={h} className="text-left py-3 px-5 text-xs font-medium text-gray-400">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -247,7 +247,7 @@ export default function SenderDetailPage() {
                 {sender.receivers.map((r) => {
                   const mb = METHOD_BADGE[r.preferredMethod ?? 'CASH'] ?? METHOD_BADGE.CASH;
                   return (
-                    <tr key={r.id} className="hover:bg-blue-50/20 transition-colors">
+                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3.5 px-5 font-semibold text-gray-900">{r.firstName} {r.lastName}</td>
                       <td className="py-3.5 px-5 font-mono text-xs text-gray-500">{r.phone}</td>
                       <td className="py-3.5 px-5">
@@ -272,7 +272,7 @@ export default function SenderDetailPage() {
       </div>
 
       {/* Transactions */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-800">Transaction History</h2>
           <span className="text-xs text-gray-400">{transactions.length} total</span>
@@ -283,13 +283,13 @@ export default function SenderDetailPage() {
               <thead>
                 <tr className="bg-gray-50/60 border-b border-gray-100">
                   {['Code', 'Receiver', 'CAD', 'GHS', 'Branch', 'Status', 'Date'].map((h) => (
-                    <th key={h} className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                    <th key={h} className="text-left py-3 px-5 text-xs font-medium text-gray-400">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {transactions.map((t) => (
-                  <tr key={t.id} className={`hover:bg-blue-50/20 transition-colors ${t.status === 'CANCELLED' ? 'opacity-50' : ''}`}>
+                  <tr key={t.id} className={`hover:bg-gray-50 transition-colors ${t.status === 'CANCELLED' ? 'opacity-50' : ''}`}>
                     <td className="py-3.5 px-5">
                       <Link href={`/sending/transactions/${t.id}`}
                         className="font-mono text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline">

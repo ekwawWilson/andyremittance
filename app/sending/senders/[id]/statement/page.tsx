@@ -78,7 +78,7 @@ export default function SenderStatementPage() {
               &larr; Back to Sender
             </Link>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Statement</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Statement</h1>
           <p className="text-gray-500 text-sm mt-1">
             {sender.firstName} {sender.lastName} &middot; {sender.phone}
             {sender.accountCode && <span className="text-gray-400 ml-2">({sender.accountCode})</span>}
@@ -133,7 +133,7 @@ export default function SenderStatementPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Opening Balance</p>
+            <p className="text-xs text-gray-400 font-medium">Opening Balance</p>
             <p className={`text-xl font-bold mt-1 ${summary.openingBalance < 0 ? 'text-red-600' : summary.openingBalance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
               {fmtCADSigned(summary.openingBalance)}
             </p>
@@ -141,21 +141,21 @@ export default function SenderStatementPage() {
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Total Debits</p>
+            <p className="text-xs text-gray-400 font-medium">Total Debits</p>
             <p className="text-xl font-bold text-red-600 mt-1">{fmtCAD(summary.totalDebits)}</p>
             <p className="text-xs text-gray-400 mt-0.5">{summary.transactionCount} transaction{summary.transactionCount !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Total Credits</p>
+            <p className="text-xs text-gray-400 font-medium">Total Credits</p>
             <p className="text-xl font-bold text-green-600 mt-1">{fmtCAD(summary.totalCredits)}</p>
             <p className="text-xs text-gray-400 mt-0.5">{summary.paymentCount} payment{summary.paymentCount !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs text-gray-500 uppercase font-medium">Closing Balance</p>
+            <p className="text-xs text-gray-400 font-medium">Closing Balance</p>
             <p className={`text-xl font-bold mt-1 ${summary.closingBalance < 0 ? 'text-red-600' : summary.closingBalance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
               {fmtCADSigned(summary.closingBalance)}
             </p>
@@ -188,14 +188,14 @@ export default function SenderStatementPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4 text-gray-600 font-semibold">Date</th>
-                    <th className="text-left py-3 px-4 text-gray-600 font-semibold">Type</th>
-                    <th className="text-left py-3 px-4 text-gray-600 font-semibold">Status</th>
-                    <th className="text-left py-3 px-4 text-gray-600 font-semibold">Description</th>
-                    <th className="text-left py-3 px-4 text-gray-600 font-semibold">Reference</th>
-                    <th className="text-right py-3 px-4 text-gray-600 font-semibold">Debit</th>
-                    <th className="text-right py-3 px-4 text-gray-600 font-semibold">Credit</th>
-                    <th className="text-right py-3 px-4 text-gray-600 font-semibold">Balance</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Type</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Description</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Reference</th>
+                    <th className="text-right py-3 px-4 text-gray-400 font-medium">Debit</th>
+                    <th className="text-right py-3 px-4 text-gray-400 font-medium">Credit</th>
+                    <th className="text-right py-3 px-4 text-gray-400 font-medium">Balance</th>
                   </tr>
                 </thead>
                 <tbody>

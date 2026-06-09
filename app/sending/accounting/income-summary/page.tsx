@@ -28,12 +28,12 @@ export default function IncomeSummaryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Income Summary</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Income Summary</h1>
         <p className="text-sm text-gray-400 mt-0.5">CAD revenue and fee income for the sending side</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex gap-3 flex-wrap items-center">
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-400 font-medium whitespace-nowrap">From</label>
@@ -47,7 +47,7 @@ export default function IncomeSummaryPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-center h-48 bg-white rounded-xl border border-gray-200">
           <div className="animate-spin rounded-full h-7 w-7 border-2 border-violet-600 border-t-transparent" />
         </div>
       ) : error ? (
@@ -69,7 +69,7 @@ export default function IncomeSummaryPage() {
           </div>
 
           {/* Transaction stats */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-sm font-bold text-gray-700 mb-3">Transaction Volume</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="bg-blue-50 rounded-xl p-3">
@@ -90,7 +90,7 @@ export default function IncomeSummaryPage() {
           </div>
 
           {/* Revenue breakdown */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-3 bg-green-50/60 border-b border-green-100 flex items-center justify-between">
               <h3 className="text-sm font-bold text-green-700">Revenue Breakdown</h3>
               <span className="text-sm font-bold text-green-700">{fmtCAD(data.income.total)}</span>
@@ -121,7 +121,7 @@ export default function IncomeSummaryPage() {
           </div>
 
           {/* Net income footer */}
-          <div className={`rounded-2xl border p-5 flex items-center justify-between ${data.netIncome >= 0 ? 'bg-violet-50 border-violet-100' : 'bg-red-50 border-red-100'}`}>
+          <div className={`rounded-xl border p-5 flex items-center justify-between ${data.netIncome >= 0 ? 'bg-violet-50 border-violet-100' : 'bg-red-50 border-red-100'}`}>
             <div>
               <p className="text-sm font-semibold text-gray-600">Net Income (CAD)</p>
               <p className="text-xs text-gray-400 mt-0.5">

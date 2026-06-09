@@ -120,7 +120,7 @@ export default function ReceiverDetailPage() {
 
       {/* Print-only header */}
       <div className="hidden print:block mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Receiver Details</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Receiver Details</h1>
         <p className="text-sm text-gray-500">Printed on {new Date().toLocaleDateString('en-CA')}</p>
       </div>
 
@@ -132,33 +132,33 @@ export default function ReceiverDetailPage() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Phone</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">Phone</p>
               <p className="text-gray-900 font-medium">{receiver.phone}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Email</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">Email</p>
               <p className="text-gray-900 font-medium">{receiver.email || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Sender</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">Sender</p>
               <p className="text-gray-900 font-medium">
                 {receiver.sender ? `${receiver.sender.firstName} ${receiver.sender.lastName}` : '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Relationship</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">Relationship</p>
               <p className="text-gray-900 font-medium">{receiver.relationshipToSender || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">ID Type</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">ID Type</p>
               <p className="text-gray-900 font-medium">{receiver.idType || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">ID Number</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">ID Number</p>
               <p className="text-gray-900 font-medium">{receiver.idNumber || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Preferred Method</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">Preferred Method</p>
               <span className={`inline-flex mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 receiver.preferredMethod === 'CASH' ? 'bg-green-100 text-green-800' :
                 receiver.preferredMethod === 'BANK' ? 'bg-blue-100 text-blue-800' :
@@ -170,11 +170,11 @@ export default function ReceiverDetailPage() {
             {receiver.preferredMethod === 'BANK' && (
               <>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Bank</p>
+                  <p className="text-xs text-gray-400 font-medium mb-0.5">Bank</p>
                   <p className="text-gray-900 font-medium">{receiver.bankName || '—'}{receiver.bankBranch ? ` — ${receiver.bankBranch}` : ''}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Account No.</p>
+                  <p className="text-xs text-gray-400 font-medium mb-0.5">Account No.</p>
                   <p className="text-gray-900 font-medium">{receiver.bankAccount || '—'}</p>
                 </div>
               </>
@@ -182,11 +182,11 @@ export default function ReceiverDetailPage() {
             {receiver.preferredMethod === 'MOMO' && (
               <>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">MoMo Number</p>
+                  <p className="text-xs text-gray-400 font-medium mb-0.5">MoMo Number</p>
                   <p className="text-gray-900 font-medium">{receiver.momoNumber || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium mb-0.5">Provider</p>
+                  <p className="text-xs text-gray-400 font-medium mb-0.5">Provider</p>
                   <p className="text-gray-900 font-medium">{receiver.momoProvider || '—'}</p>
                 </div>
               </>

@@ -479,12 +479,12 @@ export default function ReceiversPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Receivers</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Receivers</h1>
           <p className="text-sm text-gray-400 mt-0.5">Manage recipient profiles for Ghana payouts</p>
         </div>
         {canCreate && (
           <button onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Add Receiver
           </button>
@@ -492,7 +492,7 @@ export default function ReceiversPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-50">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -520,19 +520,16 @@ export default function ReceiversPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-48 gap-3">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-blue-600 border-t-transparent" />
             <span className="text-sm text-gray-400">Loading…</span>
           </div>
         ) : receivers.length === 0 ? (
-          <div className="py-20 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </div>
-            <p className="font-medium text-gray-600">No receivers found</p>
-            <p className="text-sm text-gray-400 mt-1">
+          <div className="py-16 text-center">
+            <p className="text-sm text-gray-500">No receivers found</p>
+            <p className="text-xs text-gray-400 mt-1">
               {search || selectedSender ? 'Try adjusting your filters' : 'Add the first receiver to get started'}
             </p>
             {canCreate && !search && !selectedSender && (
@@ -548,17 +545,17 @@ export default function ReceiversPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50/60 border-b border-gray-100">
-                  <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Receiver</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Phone</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sender</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Payout</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Relationship</th>
-                  <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Actions</th>
+                  <th className="text-left py-3 px-5 text-xs font-medium text-gray-400">Receiver</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Phone</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Sender</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Payout</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Relationship</th>
+                  <th className="text-right py-3 px-5 text-xs font-medium text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {receivers.map((r) => (
-                  <tr key={r.id} className="hover:bg-blue-50/20 transition-colors group">
+                  <tr key={r.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">

@@ -262,7 +262,7 @@ export default function EndOfDayPage() {
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">End of Day</h1>
+          <h1 className="text-lg font-semibold text-gray-900">End of Day</h1>
           <p className="text-sm text-gray-400 mt-0.5">Sync standard transactions to the receiving portal</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -300,15 +300,10 @@ export default function EndOfDayPage() {
       </div>
 
       {/* ─── Server Date Banner ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
         <div className="flex items-center gap-3 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Sending Portal — Current Business Date</p>
+            <p className="text-xs text-blue-500">Sending Portal — Current Business Date</p>
             {serverDateLoading ? (
               <div className="h-5 w-24 bg-blue-100 rounded animate-pulse mt-0.5" />
             ) : (
@@ -344,11 +339,8 @@ export default function EndOfDayPage() {
 
       {/* ─── Success banner ─── */}
       {lastResult && (
-        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-2xl">
+        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
             <div>
               <p className="text-sm font-semibold text-green-800">Day closed successfully</p>
               <p className="text-sm text-green-700 mt-0.5">
@@ -366,7 +358,7 @@ export default function EndOfDayPage() {
 
       {/* ─── Error ─── */}
       {closeError && !confirmOpen && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-2xl">
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
           <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <p className="text-sm text-red-700">{closeError}</p>
         </div>
@@ -381,8 +373,8 @@ export default function EndOfDayPage() {
           { label: 'Unsynced Std.', value: unsynced.length, sub: alreadyClosed ? 'Day closed' : 'pending sync', color: unsynced.length > 0 ? 'text-amber-600' : 'text-gray-400' },
           { label: 'Total Owing', value: `$${fmt(totalOwing)}`, sub: `${debts.length} sender${debts.length !== 1 ? 's' : ''}`, color: totalOwing > 0 ? 'text-red-600' : 'text-gray-400' },
         ].map(({ label, value, sub, color }) => (
-          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-400">{label}</p>
             <p className={`text-xl font-bold mt-1 ${color}`}>{previewLoading ? <span className="text-gray-300 animate-pulse">—</span> : value}</p>
             {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
           </div>
@@ -399,8 +391,8 @@ export default function EndOfDayPage() {
         <>
           {/* Payment method breakdown */}
           {previewActive.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Payment Collection (Canada)</p>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-medium text-gray-500 mb-3">Payment Collection (Canada)</p>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Cash', amount: cashCAD, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
@@ -421,7 +413,7 @@ export default function EndOfDayPage() {
 
           {/* Debts */}
           {debts.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-800">Sender Debts / Owings</h2>
                 <span className="text-xs text-red-500 font-semibold">Total owing: ${fmt(totalOwing)}</span>
@@ -431,13 +423,13 @@ export default function EndOfDayPage() {
                   <thead>
                     <tr className="bg-gray-50/60 border-b border-gray-100">
                       {['Code', 'Sender', 'Receiver', 'Total CAD', 'Paid', 'Owing', 'Method'].map((h) => (
-                        <th key={h} className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                        <th key={h} className="text-left py-3 px-4 text-xs font-medium text-gray-400">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {debts.map((t) => (
-                      <tr key={t.id} className="bg-amber-50/60 hover:bg-amber-50 transition-colors">
+                      <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                         <td className="py-2.5 px-4 font-mono text-xs text-blue-600 font-semibold">{t.transactionCode}</td>
                         <td className="py-2.5 px-4 text-gray-700 text-sm">{t.sender?.firstName} {t.sender?.lastName}</td>
                         <td className="py-2.5 px-4 text-gray-600 text-sm">{t.receiver?.firstName} {t.receiver?.lastName}</td>
@@ -461,7 +453,7 @@ export default function EndOfDayPage() {
           )}
 
           {/* Transactions table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-800">Transactions — {dateLabel}</h2>
@@ -475,11 +467,8 @@ export default function EndOfDayPage() {
               )}
             </div>
             {previewActive.length === 0 ? (
-              <div className="py-16 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                </div>
-                <p className="text-gray-500 text-sm">No transactions for this date</p>
+              <div className="py-14 text-center">
+                <p className="text-sm text-gray-500">No transactions for this date</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -487,7 +476,7 @@ export default function EndOfDayPage() {
                   <thead>
                     <tr className="bg-gray-50/60 border-b border-gray-100">
                       {['Code', 'Sender', 'Receiver', 'Branch', 'CAD', 'GHS', 'Mode', 'Payment', 'Status'].map((h) => (
-                        <th key={h} className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                        <th key={h} className="text-left py-3 px-4 text-xs font-medium text-gray-400">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -501,7 +490,7 @@ export default function EndOfDayPage() {
                           </td>
                         </tr>
                         {previewStandard.map((t) => (
-                          <tr key={t.id} className="hover:bg-blue-50/20 transition-colors">
+                          <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                             <td className="py-2.5 px-4 font-mono text-xs font-semibold text-blue-600">{t.transactionCode}</td>
                             <td className="py-2.5 px-4 text-gray-700 text-sm">{t.sender?.firstName} {t.sender?.lastName}</td>
                             <td className="py-2.5 px-4 text-gray-600 text-sm">{t.receiver?.firstName ?? <span className="text-amber-600 text-xs italic">Deferred</span>} {t.receiver?.lastName ?? ''}</td>
@@ -561,7 +550,7 @@ export default function EndOfDayPage() {
       )}
 
       {/* ─── History ─── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-50">
           <h2 className="text-base font-semibold text-gray-800">Previous EOD Closings</h2>
         </div>
@@ -577,13 +566,13 @@ export default function EndOfDayPage() {
                 <thead>
                   <tr className="bg-gray-50/60 border-b border-gray-100">
                     {['Date', 'Closed By', 'Closed At', 'Synced', 'Report'].map((h) => (
-                      <th key={h} className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="text-left py-3 px-5 text-xs font-medium text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {history.map((r) => (
-                    <tr key={r.id} className="hover:bg-blue-50/20 transition-colors">
+                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3.5 px-5 font-semibold text-gray-900">
                         {new Date(r.date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </td>
@@ -632,11 +621,8 @@ export default function EndOfDayPage() {
       {/* ─── Confirm Modal ─── */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-              </div>
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Confirm End of Day</h2>
                 <p className="text-xs text-gray-400 mt-0.5">{dateLabel}</p>
@@ -681,13 +667,8 @@ export default function EndOfDayPage() {
       {/* ─── Manual Server Date Modal ─── */}
       {manualDateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
             <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Adjust Sending Server Date</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Manually set the current business date for the sending portal</p>

@@ -96,8 +96,8 @@ function RateBox({
   const effective = overrideValid ? override : official;
 
   return (
-    <div className={`flex-1 rounded-xl p-4 border ${warn ? 'border-amber-300 bg-amber-50' : 'border-gray-100 bg-white'} shadow-sm`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Exchange Rate</p>
+    <div className={`flex-1 rounded-xl p-4 border ${warn ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+      <p className="text-xs text-gray-400 mb-1">Exchange Rate</p>
       {canEditRate ? (
         <div className="flex items-center gap-2">
           <input
@@ -183,7 +183,7 @@ function SenderSearchBox({
   if (addNew) return (
     <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">New Sender</span>
+        <span className="text-xs font-medium text-amber-700">New Sender</span>
         <button type="button" onClick={() => setAddNew(false)} className="text-xs text-amber-600 hover:text-amber-800">Cancel</button>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -212,7 +212,7 @@ function SenderSearchBox({
   if (editing && editDraft) return (
     <div className="border border-blue-200 bg-blue-50 rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Edit Sender</span>
+        <span className="text-xs font-medium text-blue-700">Edit Sender</span>
         <button type="button" onClick={() => setEditing(false)} className="text-xs text-blue-600 hover:text-blue-800">Cancel</button>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -744,14 +744,14 @@ export default function NewTransactionPage() {
       <div className="w-full lg:w-5/12 space-y-4">
         {/* Page title + code/rate pills */}
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">New Transaction</h1>
+          <h1 className="text-lg font-semibold text-gray-900">New Transaction</h1>
           <p className="text-sm text-gray-400 mt-0.5">Fill each step, then submit</p>
         </div>
 
         {/* Code + Rate row */}
         <div className="flex gap-3">
-          <div className="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-4 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1">Code Format</p>
+          <div className="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="text-xs text-blue-500 mb-1">Code Format</p>
             <p className="font-mono font-bold text-blue-700 text-lg">{codePreview}</p>
             <p className="text-[10px] text-blue-400 mt-0.5">
               Generated on submit. {codeType === 'ADDITIONAL' ? 'Immediate sync' : 'Synced at EOD'}
@@ -799,7 +799,7 @@ export default function NewTransactionPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* ── Step 1: Sender & Receiver ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <StepHeader n={1} label="Sender & Receiver" active={true} done={step1Done} />
             <div className="px-5 py-4 space-y-4">
               {/* Multi-mode toggle */}
@@ -905,14 +905,14 @@ export default function NewTransactionPage() {
                             )}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1 block">GHS Amount *</label>
+                                <label className="text-[10px] font-medium text-gray-400 mb-1 block">GHS Amount *</label>
                                 <input type="number" step="0.01" min="0" placeholder="0.00"
                                   value={entry.ghsAmount}
                                   onChange={(e) => setMultiEntries((p) => p.map((en, i) => i === idx ? { ...en, ghsAmount: e.target.value } : en))}
                                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 font-mono" />
                               </div>
                               <div>
-                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1 block">Notes</label>
+                                <label className="text-[10px] font-medium text-gray-400 mb-1 block">Notes</label>
                                 <input type="text" placeholder="Optional"
                                   value={entry.notes}
                                   onChange={(e) => setMultiEntries((p) => p.map((en, i) => i === idx ? { ...en, notes: e.target.value } : en))}
@@ -947,7 +947,7 @@ export default function NewTransactionPage() {
           </div>
 
           {/* ── Step 2: Amount & Payment ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <StepHeader n={2} label="Amount & Payment" active={step1Done} done={step2Done} />
             <div className="px-5 py-4 space-y-3">
               {/* CAD + GHS live preview */}
@@ -1038,7 +1038,7 @@ export default function NewTransactionPage() {
           </div>
 
           {/* ── Step 3: Delivery Details ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <StepHeader n={3} label="Delivery Details (Ghana)" active={step2Done} done={step3Done} />
             <div className="px-5 py-4 space-y-3">
               {/* Receiving branch */}
@@ -1067,7 +1067,7 @@ export default function NewTransactionPage() {
               {/* Bank */}
               {receivingMode === 'BANK' && (
                 <div className="space-y-2.5 pt-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Bank Details</p>
+                  <p className="text-[10px] font-medium text-gray-400">Bank Details</p>
                   <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank Name *" required className={inputCls} />
                   <input value={bankAccountNo} onChange={(e) => setBankAccountNo(e.target.value)} placeholder="Account Number *" required minLength={6} maxLength={20} className={`${inputCls} font-mono`} />
                   <input value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} placeholder="Account Name *" required className={inputCls} />
@@ -1079,11 +1079,11 @@ export default function NewTransactionPage() {
               {receivingMode === 'MOMO' && (
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">MoMo Details</p>
+                    <p className="text-[10px] font-medium text-gray-400 mb-1.5">MoMo Details</p>
                     <input type="tel" value={momoNumber} onChange={(e) => setMomoNumber(e.target.value)} placeholder="Number *" required minLength={9} maxLength={15} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Name on Number</p>
+                    <p className="text-[10px] font-medium text-gray-400 mb-1.5">Name on Number</p>
                     <input value={momoName} onChange={(e) => setMomoName(e.target.value)}
                       placeholder={receiver ? `${receiver.firstName} ${receiver.lastName}` : 'Receiver name'} className={inputCls} />
                   </div>
@@ -1100,7 +1100,7 @@ export default function NewTransactionPage() {
           </div>
 
           {/* ── Step 4: Review & Submit ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <StepHeader n={4} label="Review & Submit" active={step3Done} done={false} />
             <div className="px-5 py-4">
               {/* Summary strip */}
@@ -1151,13 +1151,13 @@ export default function NewTransactionPage() {
 
       {/* ─── Right column: today's transactions ─── */}
       <div className="flex-1 min-w-0">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden sticky top-4">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden sticky top-4">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <div>
               <h2 className="text-sm font-semibold text-gray-800">Today&apos;s Transactions</h2>
               <p className="text-xs text-gray-400 mt-0.5">{todayTxns.length} created</p>
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-300">{sendingServerDate}</span>
+            <span className="text-[10px] font-medium text-gray-300">{sendingServerDate}</span>
           </div>
           {todayTxns.length === 0 ? (
             <div className="py-12 text-center">
@@ -1169,13 +1169,13 @@ export default function NewTransactionPage() {
                 <thead>
                   <tr className="bg-gray-50/60 border-b border-gray-100">
                     {['Code', 'Sender → Receiver', 'CAD', 'GHS', 'Status'].map((h) => (
-                      <th key={h} className="text-left py-2.5 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                      <th key={h} className="text-left py-2.5 px-4 text-xs font-medium text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {todayTxns.map((t) => (
-                    <tr key={t.id} className="hover:bg-blue-50/20 transition-colors">
+                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-2.5 px-4">
                         <p className="font-mono text-xs font-bold text-blue-600">{t.transactionCode}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{t.codeType === 'ADDITIONAL' ? '⚡ Imm.' : '📋 Std.'}</p>

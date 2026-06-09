@@ -46,7 +46,7 @@ export default function ClosingBalancesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Closing Balances</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Closing Balances</h1>
         {!isLoading && (data?.transactions ?? []).length > 0 && (
           <ExportButtons title="Closing Balances" filename={`closing-balances-${date}`} headers={exportHeaders} rows={exportRows} summary={exportSummary} subtitle={`Date: ${date}`} />
         )}
@@ -86,26 +86,26 @@ export default function ClosingBalancesPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Transactions</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{s?.totalTransactions ?? 0}</p>
+                <p className="text-xs text-gray-400 font-medium">Transactions</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">{s?.totalTransactions ?? 0}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total Cash</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{fmtCAD(s?.totalCashCAD ?? 0)}</p>
+                <p className="text-xs text-gray-400 font-medium">Total Cash</p>
+                <p className="text-xl font-semibold text-green-600 mt-1">{fmtCAD(s?.totalCashCAD ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total E-Transfers</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">{fmtCAD(s?.totalETransferCAD ?? 0)}</p>
+                <p className="text-xs text-gray-400 font-medium">Total E-Transfers</p>
+                <p className="text-xl font-semibold text-blue-600 mt-1">{fmtCAD(s?.totalETransferCAD ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total Owing</p>
-                <p className={`text-2xl font-bold mt-1 ${(s?.totalOwingCAD ?? 0) > 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                <p className="text-xs text-gray-400 font-medium">Total Owing</p>
+                <p className={`text-xl font-semibold mt-1 ${(s?.totalOwingCAD ?? 0) > 0 ? 'text-red-600' : 'text-gray-500'}`}>
                   {fmtCAD(s?.totalOwingCAD ?? 0)}
                 </p>
               </CardContent>
@@ -116,25 +116,25 @@ export default function ClosingBalancesPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total CAD</p>
+                <p className="text-xs text-gray-400 font-medium">Total CAD</p>
                 <p className="text-lg font-semibold text-gray-800 mt-1">{fmtCAD(s?.totalCAD ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total GHS</p>
+                <p className="text-xs text-gray-400 font-medium">Total GHS</p>
                 <p className="text-lg font-semibold text-purple-700 mt-1">GHS {(s?.totalGHS ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Total Paid</p>
+                <p className="text-xs text-gray-400 font-medium">Total Paid</p>
                 <p className="text-lg font-semibold text-green-700 mt-1">{fmtCAD(s?.totalPaidCAD ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs text-gray-500 uppercase font-medium">Split Payments</p>
+                <p className="text-xs text-gray-400 font-medium">Split Payments</p>
                 <p className="text-lg font-semibold text-gray-700 mt-1">{fmtCAD(s?.totalSplitCAD ?? 0)}</p>
               </CardContent>
             </Card>

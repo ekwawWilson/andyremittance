@@ -34,12 +34,12 @@ export default function SenderLedgerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Sender Ledger</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Sender Ledger</h1>
         <p className="text-sm text-gray-400 mt-0.5">General ledger view for sending-side accounts</p>
       </div>
 
       {/* Account quick-select + date range */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex gap-3 flex-wrap items-end">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-400 font-medium">Account Code</label>
@@ -79,7 +79,7 @@ export default function SenderLedgerPage() {
       {result && (
         <>
           {/* Account summary */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
@@ -89,7 +89,7 @@ export default function SenderLedgerPage() {
                 <p className="text-sm text-gray-400 mt-0.5">{result.account.accountType} · {result.account.currency}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Balance</p>
+                <p className="text-xs text-gray-400 mb-1">Balance</p>
                 <p className={`text-2xl font-bold ${result.closingBalance < 0 ? 'text-red-600' : 'text-gray-900'}`}>
                   {result.account.currency} {Number(result.closingBalance).toLocaleString('en-GH', { minimumFractionDigits: 2 })}
                 </p>
@@ -112,17 +112,17 @@ export default function SenderLedgerPage() {
           </div>
 
           {/* Lines table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Date</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Reference</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Description</th>
-                  <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Type</th>
-                  <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Debit</th>
-                  <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Credit</th>
-                  <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Balance</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Date</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Reference</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Description</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Type</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">Debit</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">Credit</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">Balance</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">

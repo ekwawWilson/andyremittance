@@ -123,7 +123,7 @@ export default function CashManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Cash Management</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Cash Management</h1>
           <p className="text-sm text-gray-400 mt-0.5">Manage sending-side vault — deposits, bank transfers, and operating expenses</p>
         </div>
       </div>
@@ -140,27 +140,21 @@ export default function CashManagementPage() {
 
       {/* Vault Balance Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-700 text-lg font-bold">$</div>
-            <div>
-              <p className="text-xs text-gray-400 font-medium">Sending Vault (CASH-CAD)</p>
-              <p className="text-2xl font-bold text-green-700 mt-0.5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div>
+              <p className="text-xs text-gray-400">Sending Vault (CASH-CAD)</p>
+              <p className="text-xl font-semibold text-green-700 mt-0.5">
                 {vault === null ? '—' : fmtCAD(vault)}
               </p>
-            </div>
           </div>
           <p className="text-xs text-gray-400 mt-3">Physical cash held at the sending office. Increases on deposits; decreases on bank transfers and expenses.</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 text-lg font-bold">🏦</div>
-            <div>
-              <p className="text-xs text-gray-400 font-medium">Bank Clearing (BANK-CLEARING)</p>
-              <p className="text-2xl font-bold text-blue-700 mt-0.5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div>
+              <p className="text-xs text-gray-400">Bank Clearing (BANK-CLEARING)</p>
+              <p className="text-xl font-semibold text-blue-700 mt-0.5">
                 {bankClearing === null ? '—' : fmtCAD(bankClearing)}
               </p>
-            </div>
           </div>
           <p className="text-xs text-gray-400 mt-3">Funds deposited to the bank from the vault. Increases when vault transfers to bank.</p>
         </div>
@@ -172,9 +166,9 @@ export default function CashManagementPage() {
           <button
             key={type}
             onClick={() => openModal(type)}
-            className={`text-left p-5 rounded-2xl border ${cfg.border} ${cfg.bg} hover:shadow-md transition-shadow group`}
+            className={`text-left p-5 rounded-xl border ${cfg.border} ${cfg.bg} hover:brightness-95 transition-all group`}
           >
-            <div className={`w-9 h-9 rounded-xl border ${cfg.border} flex items-center justify-center text-xl font-bold ${cfg.color} mb-3`}>
+            <div className={`text-xl font-bold ${cfg.color} mb-2`}>
               {cfg.icon}
             </div>
             <p className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</p>
@@ -184,7 +178,7 @@ export default function CashManagementPage() {
       </div>
 
       {/* Journal History */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200">
         <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-700">Transaction History</h2>
           <span className="text-xs text-gray-400">{total} entries</span>
@@ -203,7 +197,7 @@ export default function CashManagementPage() {
                 <thead>
                   <tr className="border-b border-gray-50">
                     {['Date', 'Type', 'Reference', 'Description', 'Amount', 'Recorded By'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -261,9 +255,9 @@ export default function CashManagementPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
             {/* Modal Header */}
-            <div className={`px-6 py-4 rounded-t-2xl border-b ${TYPE_CONFIG[opType].bg} ${TYPE_CONFIG[opType].border}`}>
+            <div className={`px-6 py-4 rounded-t-xl border-b ${TYPE_CONFIG[opType].bg} ${TYPE_CONFIG[opType].border}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className={`font-bold text-base ${TYPE_CONFIG[opType].color}`}>

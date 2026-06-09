@@ -98,7 +98,7 @@ export default function SendingReportsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <h1 className="text-lg font-semibold text-gray-900">
             {canViewAll
               ? selectedAgent ? `Report — ${selectedAgent.firstName} ${selectedAgent.lastName}` : 'All Agents Report'
               : 'My Transactions Report'}
@@ -185,10 +185,10 @@ export default function SendingReportsPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <Card><CardContent><p className="text-xs text-gray-500 uppercase">Transactions</p><p className="text-2xl font-bold text-gray-900 mt-1">{s.totalTransactions}</p></CardContent></Card>
-            <Card><CardContent><p className="text-xs text-gray-500 uppercase">Total CAD</p><p className="text-2xl font-bold text-green-600 mt-1">{fmtCAD(s.totalCAD)}</p></CardContent></Card>
-            <Card><CardContent><p className="text-xs text-gray-500 uppercase">Total GHS</p><p className="text-2xl font-bold text-purple-600 mt-1">GHS {s.totalGHS.toLocaleString()}</p></CardContent></Card>
-            <Card><CardContent><p className="text-xs text-gray-500 uppercase">Statuses</p><p className="text-sm font-medium text-gray-700 mt-1">{s.byStatus.map((b) => `${b.status}: ${b.count}`).join(' · ') || '—'}</p></CardContent></Card>
+            <Card><CardContent><p className="text-xs text-gray-500">Transactions</p><p className="text-xl font-semibold text-gray-900 mt-1">{s.totalTransactions}</p></CardContent></Card>
+            <Card><CardContent><p className="text-xs text-gray-500">Total CAD</p><p className="text-xl font-semibold text-green-600 mt-1">{fmtCAD(s.totalCAD)}</p></CardContent></Card>
+            <Card><CardContent><p className="text-xs text-gray-500">Total GHS</p><p className="text-xl font-semibold text-purple-600 mt-1">GHS {s.totalGHS.toLocaleString()}</p></CardContent></Card>
+            <Card><CardContent><p className="text-xs text-gray-500">Statuses</p><p className="text-sm font-medium text-gray-700 mt-1">{s.byStatus.map((b) => `${b.status}: ${b.count}`).join(' · ') || '—'}</p></CardContent></Card>
           </div>
 
           <Card>
