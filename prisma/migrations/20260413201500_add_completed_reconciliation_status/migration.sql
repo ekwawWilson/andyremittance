@@ -1,0 +1,1 @@
+ALTER TYPE "ReconciliationStatus" ADD VALUE IF NOT EXISTS 'COMPLETED';

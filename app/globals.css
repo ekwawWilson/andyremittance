@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/*
+ * Readable-standard typography baseline.
+ *
+ * The browser default is 16px. Many Tailwind utility classes produce text
+ * smaller than comfortable for a data-entry application (text-xs = 12px,
+ * text-sm = 14px).  We shift the root up slightly and enforce minimum sizes
+ * on common UI elements so nothing reads below 13px on screen.
+ */
+html {
+  font-size: 16px;         /* explicit — do not let the browser inherit a scaled root */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9375rem;    /* 15px — one step up from 14px default, still compact */
+  line-height: 1.55;
+}
+
+/* ── Table cells ──────────────────────────────────────────────────────────── */
+th, td {
+  font-size: 0.875rem;     /* 14px — was often 12px from text-xs */
+}
+
+/* ── Form controls ────────────────────────────────────────────────────────── */
+input, select, textarea, button {
+  font-size: 0.9375rem;    /* 15px — match body so inputs never look smaller */
+}
+
+/* ── Labels & helper text ─────────────────────────────────────────────────── */
+label {
+  font-size: 0.875rem;     /* 14px */
+  color: #374151;          /* gray-700 — legible on white without being black */
+  font-weight: 500;
+}
+
+/*
+ * Field labels throughout the app use text-gray-500 (color: #6b7280).
+ * That reads fine on dark backgrounds but is too pale on white card surfaces.
+ * Bump every gray-400/500 label text up to gray-700 (#374151).
+ */
+.text-gray-400 { color: #6b7280 !important; }   /* was #9ca3af — bump to gray-500 */
+.text-gray-500 { color: #374151 !important; }   /* was #6b7280 — bump to gray-700 */
+
+/*
+ * Tailwind text-xs (12px) is used as a "badge" / "caption" size.
+ * Re-map it to 13px so it remains legible at normal viewing distances.
+ */
+.text-xs {
+  font-size: 0.8125rem !important;  /* 13px */
+}
+
+/* text-sm (14px) — nudge to 14.5px for sub-labels and secondary info */
+.text-sm {
+  font-size: 0.90625rem !important;  /* ~14.5px */
+}
+
+/* iPhone notch / home-indicator clearance for fixed bottom elements */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

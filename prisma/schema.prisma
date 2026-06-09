@@ -1,0 +1,842 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  RECEIVING_ADMIN
+  SENDING_ADMIN
+  MANAGER
+  TELLER
+  SENDING_AGENT
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  password         String
+  firstName        String
+  lastName         String
+  phone            String?
+  role             UserRole
+  isActive         Boolean   @default(true)
+
+  // For receiving portal users
+  receivingPointId String?
+  receivingPoint   ReceivingPoint? @relation(fields: [receivingPointId], references: [id])
+
+  // Relations
+  createdSenders      Sender[]              @relation("CreatedBy")
+  createdTransactions Transaction[]         @relation("CreatedBy")
+  tellerLedger        LedgerAccount[]       @relation("TellerLedger")
+  ledgerEntries       LedgerEntry[]
+  reconciliations     TellerReconciliation[]
+  permissions         Permission[]
+  endOfDayRecords     EndOfDayRecord[]
+  transferRequests    CashTransferRequest[] @relation("TransferRequests")
+  receivingEodRecords ReceivingEodRecord[]  @relation("ReceivingEodClosedBy")
+  journalEntries      JournalEntry[]        @relation("JournalCreatedBy")
+  closedPeriods       AccountingPeriod[]    @relation("PeriodClosedBy")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  @@index([email])
+  @@index([role])
+  @@index([receivingPointId])
+}
+
+// ============================================
+// RECEIVING POINTS (BRANCHES)
+// ============================================
+
+model ReceivingPoint {
+  id       String  @id @default(uuid())
+  name     String
+  code     String  @unique // e.g., "ACCRA", "KUMASI"
+  address  String
+  city     String
+  country  String  @default("Ghana")
+  phone    String?
+  isActive Boolean @default(true)
+
+  // Business date — advances to the next day when receiving EOD is closed
+  serverDate DateTime @default(now()) @db.Date
+
+  // Relations
+  users               User[]
+  transactions        Transaction[]
+  vaultLedger         LedgerAccount[]       @relation("VaultLedger")
+  reconciliations     TellerReconciliation[]
+  notifications       Notification[]
+  receivingEodRecords ReceivingEodRecord[]
+  journalEntries      JournalEntry[]
+  accountingPeriods   AccountingPeriod[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============================================
+// SENDERS & RECEIVERS
+// ============================================
+
+model Sender {
+  id        String  @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String?
+  phone     String
+  address   String?
+  city      String?
+  country   String  @default("Canada")
+
+  // Identification
+  idType   String? // Passport, Driver's License, etc.
+  idNumber String?
+
+  // Credit Management
+  creditLimit Decimal @default(0) @db.Decimal(10, 2)
+
+  // Relations
+  createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+
+  receivers    Receiver[]
+  transactions Transaction[]
+  senderLedger LedgerAccount? @relation("SenderLedger")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@index([email])
+  @@index([createdById])
+}
+
+model Receiver {
+  id        String  @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String
+  email     String?
+
+  // Identification
+  idType   String?
+  idNumber String?
+
+  // Payment Preferences
+  preferredMethod String  @default("CASH") // CASH, BANK, MOMO
+  bankName        String?
+  bankAccount     String?
+  bankBranch      String?
+  momoNumber      String?
+  momoProvider    String? // MTN, Vodafone, AirtelTigo
+
+  // Relations
+  sender   Sender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+
+  transactions Transaction[]
+  transactionReceivers TransactionReceiver[]
+
+  relationshipToSender String? // Family, Friend, Business
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([phone])
+}
+
+// ============================================
+// EXCHANGE RATES
+// ============================================
+
+model ExchangeRate {
+  id       String   @id @default(uuid())
+  date     DateTime @unique @db.Date
+  cadToGhs Decimal  @db.Decimal(10, 4)
+
+  setBy     String
+  setByName String
+
+  isActive Boolean @default(true)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+
+enum TransactionStatus {
+  PENDING
+  SYNCED
+  PAID
+  PARTIAL
+  PARTIAL_PAYMENT
+  CANCELLED
+  VOID
+  FLAGGED
+}
+
+enum PaymentMethod {
+  CASH
+  E_TRANSFER
+  SPLIT
+}
+
+enum ReceivingMode {
+  CASH
+  BANK
+  MOMO
+}
+
+enum TransactionCodeType {
+  STANDARD
+  ADDITIONAL
+}
+
+model Transaction {
+  id String @id @default(uuid())
+
+  // Transaction Code (e.g., A0209-W001 or ADDITIONAL-A0209-W001)
+  transactionCode String @unique
+  codeType        TransactionCodeType @default(STANDARD)
+
+  // Sender & Receiver
+  // receiverId is nullable for multi-receiver transactions where receivers are
+  // assigned by the teller at disbursement time (receiversDeferred = true)
+  sender     Sender    @relation(fields: [senderId], references: [id])
+  senderId   String
+  receiver   Receiver? @relation(fields: [receiverId], references: [id])
+  receiverId String?
+
+  // When true, receivers + amounts are entered by the teller at the receiving branch
+  receiversDeferred Boolean @default(false)
+
+  // Amounts
+  cadAmount Decimal @db.Decimal(10, 2)
+  ghsAmount Decimal @db.Decimal(10, 2)
+
+  exchangeRate     ExchangeRate @relation(fields: [exchangeRateId], references: [id])
+  exchangeRateId   String
+  exchangeRateUsed Decimal      @db.Decimal(10, 4) // Store actual rate used
+
+  // Payment Details
+  paymentMethod    PaymentMethod
+  amountPaidCAD    Decimal       @default(0) @db.Decimal(10, 2)
+  amountPendingCAD Decimal       @default(0) @db.Decimal(10, 2)
+
+  // Receiving Details
+  receivingMode    ReceivingMode
+  receivingPoint   ReceivingPoint @relation(fields: [receivingPointId], references: [id])
+  receivingPointId String
+
+  // Bank details (populated when receivingMode = BANK)
+  bankName      String?
+  bankAccountNo String?
+  bankAccountName String?
+  bankBranch    String?
+
+  // Cash payout verification details (populated when receivingMode = CASH)
+  cashPhoneNumber      String?
+  cashGhanaCardNumber  String?
+
+  // Mobile money details (populated when receivingMode = MOMO)
+  momoNumber String?
+  momoName   String?
+
+  // Status
+  status TransactionStatus @default(PENDING)
+
+  // Disbursement Info
+  paidAt     DateTime?
+  paidBy     String? // Teller user ID
+  paidByName String?
+
+  // Ledger Relations
+  ledgerEntries LedgerEntry[]
+
+  // Sub-payments (partial disbursements)
+  subPayments SubPayment[]
+
+  // Multi-receiver allocations (empty for single-receiver transactions)
+  transactionReceivers TransactionReceiver[]
+
+  // Notifications
+  notifications Notification[]
+
+  // Audit
+  createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+
+  transactionDate DateTime @db.Date
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Sync tracking
+  syncedToReceiving  Boolean          @default(false)
+  syncedAt           DateTime?
+  endOfDayRecord     EndOfDayRecord?  @relation(fields: [endOfDayRecordId], references: [id])
+  endOfDayRecordId   String?
+
+  // Notes
+  notes String?
+
+  // Flag / Void tracking
+  flagReason     String?
+  flaggedFromStatus TransactionStatus?
+  flaggedAt      DateTime?
+  flaggedById    String?
+  flaggedByName  String?
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([receivingPointId])
+  @@index([status])
+  @@index([transactionDate])
+  @@index([createdAt])
+  // Composite indexes for the most common multi-column filter patterns
+  @@index([transactionDate, status])        // dashboard "today by status" query
+  @@index([createdById, transactionDate])   // agent transaction list
+  @@index([receivingPointId, status])       // pending payments by branch
+  @@index([syncedToReceiving, status])      // sync service pending-for-sync query
+}
+
+model SubPayment {
+  id            String      @id @default(uuid())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String
+
+  ghsAmount     Decimal  @db.Decimal(10, 2)  // Amount disbursed in this sub-payment
+  notes         String?
+
+  // Receiver details captured at payout time
+  receiverName  String?
+  receiverPhone String?
+
+  // Payment mode + payout details captured per sub-payment
+  receivingMode       ReceivingMode?
+  bankName            String?
+  bankAccountNo       String?
+  bankAccountName     String?
+  cashPhoneNumber     String?
+  cashGhanaCardNumber String?
+  momoNumber          String?
+  momoName            String?
+  remainingBalance    Decimal? @db.Decimal(10, 2)
+
+  // Teller who made the sub-payment
+  paidById      String
+  paidByName    String
+  paidAt        DateTime @default(now())
+
+  // Which receiving point
+  receivingPointId String?
+
+  @@index([transactionId])
+  @@index([receivingPointId])
+  @@index([paidAt])
+}
+
+// One row per receiver when a transaction has multiple receivers.
+// For single-receiver transactions this table is empty; the receiver is on Transaction.receiverId.
+model TransactionReceiver {
+  id            String      @id @default(uuid())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String
+
+  // Receiver details — either linked to an existing Receiver record or entered inline by teller
+  receiver   Receiver? @relation(fields: [receiverId], references: [id])
+  receiverId String?
+
+  // Inline receiver info (used when receiversDeferred = true and teller enters on the spot)
+  receiverName  String?
+  receiverPhone String?
+
+  ghsAmount Decimal @db.Decimal(10, 2) // Portion allocated to this receiver
+  notes     String?
+
+  // Disbursement tracking per allocation
+  isPaid     Boolean   @default(false)
+  paidAt     DateTime?
+  paidByName String?
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([receiverId])
+}
+
+// ============================================
+// LEDGER SYSTEM
+// ============================================
+
+enum LedgerAccountType {
+  SENDER        // Individual sender balance
+  COMPANY_CASH  // Company cash account (sending)
+  COMPANY_VAULT // Vault at receiving point
+  TELLER_TILL   // Individual teller till
+  ADDITIONAL_TILL // Dedicated immediate-payment till
+  BANK_CLEARING // Bank transfer clearing
+  MOMO_CLEARING // Mobile money clearing
+  RECEIVABLE    // Amounts owed by senders
+  // Accounting module additions
+  INCOME        // Revenue accounts (remittance income)
+  EXPENSE       // Expense accounts (disbursement, variance write-off)
+  EQUITY        // Retained earnings / equity
+  LIABILITY     // Payables to receivers
+}
+
+model LedgerAccount {
+  id          String            @id @default(uuid())
+  accountType LedgerAccountType
+  accountName String
+  accountCode String            @unique
+
+  // Accounting hierarchy
+  accountGroup  String? // "1000", "2000", etc. — parent class in CoA
+  accountNumber String? // e.g. "1100", "2110-BCR-KWAME"
+  description   String? // human-readable purpose
+
+  // Links to entities
+  userId String? // For TELLER_TILL
+  user   User?   @relation("TellerLedger", fields: [userId], references: [id])
+
+  senderId String? @unique // For SENDER
+  sender   Sender? @relation("SenderLedger", fields: [senderId], references: [id])
+
+  receivingPointId String?         // For COMPANY_VAULT
+  receivingPoint   ReceivingPoint? @relation("VaultLedger", fields: [receivingPointId], references: [id])
+
+  // Balance
+  balance  Decimal @default(0) @db.Decimal(12, 2)
+  currency String  @default("CAD") // CAD or GHS
+
+  // Entries
+  debitEntries  LedgerEntry[] @relation("DebitAccount")
+  creditEntries LedgerEntry[] @relation("CreditAccount")
+
+  // Transfer requests
+  transferRequestsFrom CashTransferRequest[] @relation("TransferFrom")
+  transferRequestsTo   CashTransferRequest[] @relation("TransferTo")
+
+  // Journal lines
+  journalLines JournalLine[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountType])
+  @@index([accountCode])
+  @@index([userId])
+  @@index([senderId])
+  @@index([receivingPointId])
+  @@index([accountGroup])
+}
+
+model LedgerEntry {
+  id String @id @default(uuid())
+
+  // Double-entry components
+  debitAccount   LedgerAccount @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  debitAccountId String
+
+  creditAccount   LedgerAccount @relation("CreditAccount", fields: [creditAccountId], references: [id])
+  creditAccountId String
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("CAD")
+
+  // Reference
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
+
+  description String
+  entryType   String // REMITTANCE, PAYMENT, DISBURSEMENT, TRANSFER, RECONCILIATION
+
+  // Audit
+  enteredBy   User   @relation(fields: [enteredById], references: [id])
+  enteredById String
+
+  entryDate DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@index([debitAccountId])
+  @@index([creditAccountId])
+  @@index([transactionId])
+  @@index([entryDate])
+  @@index([createdAt])
+}
+
+// ============================================
+// RECONCILIATION
+// ============================================
+
+enum ReconciliationStatus {
+  PENDING
+  COMPLETED
+  APPROVED
+  REJECTED
+}
+
+model TellerReconciliation {
+  id String @id @default(uuid())
+
+  teller   User   @relation(fields: [tellerId], references: [id])
+  tellerId String
+
+  receivingPoint   ReceivingPoint @relation(fields: [receivingPointId], references: [id])
+  receivingPointId String
+
+  reconciliationDate DateTime @db.Date
+
+  // Balances
+  openingBalance   Decimal @db.Decimal(12, 2)
+  vaultTransfersIn Decimal @db.Decimal(12, 2)
+  paymentsMade     Decimal @db.Decimal(12, 2)
+  returnsToVault   Decimal @db.Decimal(12, 2)
+  expectedClosing  Decimal @db.Decimal(12, 2)
+  actualClosing    Decimal @db.Decimal(12, 2)
+  variance         Decimal @db.Decimal(12, 2)
+
+  // Status
+  status ReconciliationStatus @default(PENDING)
+
+  // Approval
+  approvedBy     String?
+  approvedByName String?
+  approvedAt     DateTime?
+
+  notes String?
+
+  // Link to the variance journal entry (null when variance = 0 and no entry was needed)
+  varianceJournalEntryId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tellerId])
+  @@index([receivingPointId])
+  @@index([reconciliationDate])
+  @@index([status])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  userId   String?
+  userName String?
+  userRole UserRole?
+
+  action   String // LOGIN, CREATE_TRANSACTION, APPROVE_RECON, etc.
+  entity   String // User, Transaction, LedgerEntry, etc.
+  entityId String?
+
+  changes Json? // Store before/after values
+
+  ipAddress String?
+  userAgent String?
+
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([timestamp])
+}
+
+// ============================================
+// PERMISSIONS
+// ============================================
+
+// Available permission keys:
+//   EDIT_EXCHANGE_RATE   – agent can override rate per-transaction
+//   SYNC_TRANSACTIONS   – agent can trigger end-of-day sync
+//   VIEW_ALL_TRANSACTIONS – agent can see transactions created by other agents
+//   VIEW_REPORTS         – can see daily / agent reports on sending portal
+//   VIEW_LEDGER_STATEMENT – manager: view ledger statements in admin
+//   VIEW_AGENT_REPORTS   – manager: view per-agent reports in admin
+//   VIEW_PAYMENT_REPORTS – manager: view payment-method reports in admin
+
+model Permission {
+  id        String   @id @default(uuid())
+  userId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String   // e.g. EDIT_EXCHANGE_RATE
+  grantedBy String
+  grantedAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@index([key])
+}
+
+// Role defines the default permission set for each UserRole value.
+// Seeded once at migration time. Never written to at runtime.
+// Runtime checks use lib/auth/roles.ts; this table exists for operational visibility.
+model Role {
+  name        String   @id       // matches UserRole enum values
+  permissions String[]           // default permission keys for this role
+  createdAt   DateTime @default(now())
+}
+
+// ============================================
+// END-OF-DAY RECORDS
+// ============================================
+
+model EndOfDayRecord {
+  id   String @id @default(uuid())
+  date DateTime @db.Date                // the business-day that was closed
+
+  closedBy   User   @relation(fields: [closedById], references: [id])
+  closedById String
+  closedAt   DateTime @default(now())
+
+  syncedCount Int @default(0)           // number of STANDARD transactions synced
+
+  // The transactions that were synced in this EOD
+  transactions Transaction[]
+
+  @@index([closedById])
+  @@index([date])
+  @@index([closedAt])
+}
+
+// ============================================
+// CASH TRANSFER REQUESTS (teller → vault approval)
+// ============================================
+
+enum TransferRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CashTransferRequest {
+  id            String   @id @default(uuid())
+
+  fromAccount   LedgerAccount @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  fromAccountId String
+
+  toAccount     LedgerAccount @relation("TransferTo", fields: [toAccountId], references: [id])
+  toAccountId   String
+
+  amount        Decimal  @db.Decimal(12, 2)
+  notes         String?
+
+  requestedBy   User     @relation("TransferRequests", fields: [requestedById], references: [id])
+  requestedById String
+  requestedAt   DateTime @default(now())
+
+  status          TransferRequestStatus @default(PENDING)
+  approvedBy      String?
+  approvedByName  String?
+  approvedAt      DateTime?
+  rejectionReason String?
+
+  // For branch-scoping in admin views
+  receivingPointId String?
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([receivingPointId])
+}
+
+// ============================================
+// RECEIVING END-OF-DAY RECORDS
+// ============================================
+
+model ReceivingEodRecord {
+  id               String   @id @default(uuid())
+
+  receivingPoint   ReceivingPoint @relation(fields: [receivingPointId], references: [id])
+  receivingPointId String
+
+  date             DateTime @db.Date
+
+  closedBy         User     @relation("ReceivingEodClosedBy", fields: [closedById], references: [id])
+  closedById       String
+  closedAt         DateTime @default(now())
+
+  totalDisbursed    Decimal @default(0) @db.Decimal(12, 2)
+  disbursementCount Int     @default(0)
+  notes             String?
+
+  @@unique([receivingPointId, date])
+  @@index([receivingPointId])
+  @@index([date])
+}
+
+// ============================================
+// ACCOUNTING MODULE — JOURNAL & PERIODS
+// ============================================
+
+enum JournalEntryType {
+  REMITTANCE_RECEIPT    // Sender pays CAD → COMPANY_CASH
+  SYNC_ALLOCATION       // EOD — CAD value allocated to GHS vault
+  DISBURSEMENT          // Teller pays out GHS to receiver
+  VAULT_TRANSFER        // Vault ↔ teller till cash movement
+  TELLER_RECONCILIATION // Variance write-off / sign-off
+  EXCHANGE_ADJUSTMENT   // FX rate revaluation
+  CASH_DEPOSIT          // Sending side — cash deposited into CASH-CAD vault
+  BANK_TRANSFER         // Sending side — funds moved from CASH-CAD to bank
+  OPERATING_EXPENSE     // Sending side — operating expense paid from CASH-CAD
+  MANUAL                // Admin-created manual entry
+}
+
+enum JournalStatus {
+  DRAFT    // Not yet committed to balances
+  POSTED   // Balances updated
+  REVERSED // Reversed by a later journal
+}
+
+enum PeriodStatus {
+  OPEN
+  CLOSED
+  LOCKED
+}
+
+model JournalEntry {
+  id          String           @id @default(uuid())
+  journalDate DateTime         @db.Date  // business date
+  reference   String           // "TXN-2026-001", "RECON-BCR-20260412"
+  description String
+  entryType   JournalEntryType
+  status      JournalStatus    @default(POSTED)
+
+  // Branch scoping — null = company-wide / head-office entry
+  receivingPointId String?
+  receivingPoint   ReceivingPoint? @relation(fields: [receivingPointId], references: [id])
+
+  // Originating record links for drill-down
+  transactionId     String?
+  reconciliationId  String?
+  transferRequestId String?
+
+  lines JournalLine[]
+
+  createdById String
+  createdBy   User   @relation("JournalCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  // Reversal tracking
+  reversedById String?
+  reversedAt   DateTime?
+
+  // Self-referential FK: the entry that this reversal cancels out.
+  // Enforced at DB level so reversalOfId can never point to a phantom row.
+  reversalOfId     String?
+  reversalOf       JournalEntry?  @relation("ReversalOf", fields: [reversalOfId], references: [id])
+  reversedByEntry  JournalEntry[] @relation("ReversalOf")
+
+  @@index([journalDate])
+  @@index([receivingPointId, journalDate])
+  @@index([entryType])
+  @@index([transactionId])
+  @@index([status])
+}
+
+model JournalLine {
+  id             String       @id @default(uuid())
+  journalEntryId String
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+
+  accountId String
+  account   LedgerAccount @relation(fields: [accountId], references: [id])
+
+  debit    Decimal @default(0) @db.Decimal(12, 2)
+  credit   Decimal @default(0) @db.Decimal(12, 2)
+  currency String  @default("CAD")
+
+  description String? // line-level narration
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model AccountingPeriod {
+  id           String       @id @default(uuid())
+  periodYear   Int          // 2026
+  periodMonth  Int          // 4 = April
+  startDate    DateTime     @db.Date
+  endDate      DateTime     @db.Date
+  status       PeriodStatus @default(OPEN)
+
+  // null = company-wide period; non-null = branch-specific period
+  receivingPointId String?
+  receivingPoint   ReceivingPoint? @relation(fields: [receivingPointId], references: [id])
+
+  closedById String?
+  closedBy   User?   @relation("PeriodClosedBy", fields: [closedById], references: [id])
+  closedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([periodYear, periodMonth, receivingPointId])
+  @@index([status])
+  @@index([receivingPointId])
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id String @id @default(uuid())
+
+  receivingPoint   ReceivingPoint @relation(fields: [receivingPointId], references: [id])
+  receivingPointId String
+
+  transactionId   String
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([receivingPointId, isRead, createdAt])
+  @@index([transactionId])
+}
+
+// ============================================
+// SYSTEM CONFIG (singleton)
+// ============================================
+
+model SystemConfig {
+  key   String @id // always "DEFAULT"
+
+  // Sending portal business date — advances when sending EOD is closed
+  sendingServerDate DateTime @db.Date
+
+  updatedAt DateTime @updatedAt
+}
