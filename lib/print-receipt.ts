@@ -30,6 +30,8 @@ function modeLabel(mode: string) {
   return mode === 'CASH' ? 'Cash' : mode === 'BANK' ? 'Bank Transfer' : mode === 'MOMO' ? 'Mobile Money' : mode;
 }
 
+const MOMO_CHARGE_RATE = 0.02; // 2% MoMo levy
+
 function buildCopy(
   t: Transaction,
   branchName: string,
@@ -42,7 +44,10 @@ function buildCopy(
   const receivingMode = options.receivingMode ?? t.receivingMode;
   const receiverName = options.receiverName ?? `${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}`.trim();
   const receiverPhone = options.receiverPhone ?? t.receiver?.phone ?? '';
-  const amountPaid = Number(options.amountPaidGHS ?? t.ghsAmount);
+  const grossAmount = Number(options.amountPaidGHS ?? t.ghsAmount);
+  const isMomo = receivingMode === 'MOMO';
+  const momoCharge = isMomo ? grossAmount * MOMO_CHARGE_RATE : 0;
+  const amountPaid = isMomo ? grossAmount - momoCharge : grossAmount;
   const notes = options.notes ?? t.notes;
 
   const modeDetails =
@@ -108,9 +113,10 @@ function buildCopy(
     </div>
 
     <div class="amount-box">
-      <div class="amount-label">${options.amountLabel ?? 'AMOUNT PAID'}</div>
+      <div class="amount-label">${options.amountLabel ?? 'AMOUNT TO RECEIVE'}</div>
       <div class="amount-value">GHS ${fmt(amountPaid)}</div>
       <div class="amount-rate">@ CAD 1 = GHS ${Number(t.exchangeRateUsed).toFixed(4)} &nbsp;&nbsp;|&nbsp;&nbsp; Sent: CAD ${fmt(Number(t.cadAmount))}</div>
+      ${isMomo ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(grossAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoCharge)}</span></div>` : ''}
     </div>
 
     ${notes ? `<div class="notes">Note: ${notes}</div>` : ''}
@@ -142,7 +148,12 @@ export function printMultiReceiverReceipt(
   const dateStr = paidAt.toLocaleDateString('en-GH', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = paidAt.toLocaleTimeString('en-GH', { hour: '2-digit', minute: '2-digit' });
 
-  const slips = allocations.map((alloc, idx) => `
+  const isMomoMulti = t.receivingMode === 'MOMO';
+
+  const slips = allocations.map((alloc, idx) => {
+    const momoChargeAlloc = isMomoMulti ? alloc.ghsAmount * MOMO_CHARGE_RATE : 0;
+    const netAmountAlloc = isMomoMulti ? alloc.ghsAmount - momoChargeAlloc : alloc.ghsAmount;
+    return `
   <section class="receipt${idx < allocations.length - 1 ? ' has-cut' : ''}">
     <div class="copy-label">RECEIVER ${idx + 1} OF ${allocations.length}</div>
 
@@ -194,9 +205,10 @@ export function printMultiReceiverReceipt(
     </div>
 
     <div class="amount-box">
-      <div class="amount-label">AMOUNT PAID</div>
-      <div class="amount-value">GHS ${fmt(alloc.ghsAmount)}</div>
+      <div class="amount-label">AMOUNT TO RECEIVE</div>
+      <div class="amount-value">GHS ${fmt(netAmountAlloc)}</div>
       <div class="amount-rate">@ CAD 1 = GHS ${Number(t.exchangeRateUsed).toFixed(4)} &nbsp;&nbsp;|&nbsp;&nbsp; Sent: CAD ${fmt(Number(t.cadAmount))}</div>
+      ${isMomoMulti ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(alloc.ghsAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoChargeAlloc)}</span></div>` : ''}
     </div>
 
     ${alloc.notes ? `<div class="notes">Note: ${alloc.notes}</div>` : ''}
@@ -210,8 +222,8 @@ export function printMultiReceiverReceipt(
       <div class="sig-box">Teller's Signature</div>
     </div>
   </section>
-  ${idx < allocations.length - 1 ? '<div class="cut-line"><span class="cut-text">✂ &nbsp; cut here</span></div>' : ''}`
-  ).join('');
+  ${idx < allocations.length - 1 ? '<div class="cut-line"><span class="cut-text">✂ &nbsp; cut here</span></div>' : ''}`;
+  }).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -307,6 +319,10 @@ export function printMultiReceiverReceipt(
   .amount-label { font-size: 7pt; font-weight: 700; color: #7c3aed; letter-spacing: 0.06em; text-transform: uppercase; }
   .amount-value { font-size: 18pt; font-weight: 900; color: #4c1d95; letter-spacing: 0.01em; margin: 1.5pt 0; }
   .amount-rate  { font-size: 7pt; color: #6b7280; }
+  .momo-fee-row { display: flex; justify-content: space-between; align-items: center; font-size: 7pt; color: #6b7280; border-top: 0.5pt dashed #ddd6fe; margin-top: 2.5pt; padding-top: 2pt; }
+  .momo-fee-label { text-align: left; }
+  .momo-fee-val { font-weight: 700; }
+  .momo-fee-deduct { color: #dc2626; }
   .notes {
     font-size: 7.5pt; color: #374151; background: #fefce8;
     border: 0.5pt solid #fbbf24; border-radius: 3pt; padding: 3pt 5pt; margin-top: 3pt;
@@ -736,6 +752,10 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
   .amount-label { font-size: 7pt; font-weight: 700; color: #3b82f6; letter-spacing: 0.06em; text-transform: uppercase; }
   .amount-value { font-size: 18pt; font-weight: 900; color: #1e3a8a; letter-spacing: 0.01em; margin: 1.5pt 0; }
   .amount-rate  { font-size: 7pt; color: #6b7280; }
+  .momo-fee-row { display: flex; justify-content: space-between; align-items: center; font-size: 7pt; color: #6b7280; border-top: 0.5pt dashed #bfdbfe; margin-top: 2.5pt; padding-top: 2pt; }
+  .momo-fee-label { text-align: left; }
+  .momo-fee-val { font-weight: 700; }
+  .momo-fee-deduct { color: #dc2626; }
 
   .notes {
     font-size: 7.5pt; color: #374151; background: #fefce8;
