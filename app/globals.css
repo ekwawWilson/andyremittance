@@ -1,49 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * Force the browser to treat every surface as light-mode regardless of the
+ * OS colour-scheme setting.  This single declaration prevents iOS Safari,
+ * Android WebView, and Chrome from applying dark-mode form-control rendering
+ * (dark input backgrounds, faint text) on top of our white card surfaces.
+ */
 :root {
+  color-scheme: light only;   /* tell the browser: light only, never dark */
+  --field-bg:   #ffffff;
+  --field-text: #111111;
+  --field-border: #d1d5db;    /* gray-300 */
   --background: #ffffff;
   --foreground: #111111;
 }
 
-/* App always uses light surfaces — do not invert colours in OS dark mode */
-
-/*
- * Readable-standard typography baseline.
- *
- * The browser default is 16px. Many Tailwind utility classes produce text
- * smaller than comfortable for a data-entry application (text-xs = 12px,
- * text-sm = 14px).  We shift the root up slightly and enforce minimum sizes
- * on common UI elements so nothing reads below 13px on screen.
- */
 html {
-  font-size: 16px;         /* explicit — do not let the browser inherit a scaled root */
+  font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  color-scheme: light only;   /* repeat on <html> — some engines read it here */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.9375rem;    /* 15px — one step up from 14px default, still compact */
+  font-size: 0.9375rem;
   line-height: 1.55;
 }
 
 /* ── Table cells ──────────────────────────────────────────────────────────── */
 th, td {
-  font-size: 0.875rem;     /* 14px — was often 12px from text-xs */
+  font-size: 0.875rem;
 }
 
 /* ── Form controls ────────────────────────────────────────────────────────── */
 input, select, textarea, button {
-  font-size: 0.9375rem;    /* 15px — match body so inputs never look smaller */
+  font-size: 0.9375rem;
 }
 
-/* Force black text in all form fields — prevents OS dark-mode from making
-   typed text invisible on white input backgrounds on mobile */
-input, select, textarea {
-  color: #111111;
-  background-color: #ffffff;
-  -webkit-text-fill-color: #111111; /* overrides iOS/Safari autofill colour */
+/*
+ * Lock every form field to a light palette.
+ * - color / background-color: standard browsers
+ * - -webkit-text-fill-color:  overrides iOS/Safari text colour including
+ *   when the OS autofill applies its own dark background
+ * - appearance: none on select removes the native dark widget on Android
+ */
+input,
+select,
+textarea {
+  color: var(--field-text) !important;
+  background-color: var(--field-bg) !important;
+  -webkit-text-fill-color: var(--field-text) !important;
+  border-color: var(--field-border);
+}
+
+/* Autofill highlight (Chrome/Safari changes the background to a coloured tint) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 9999px var(--field-bg) inset !important;
+  -webkit-text-fill-color: var(--field-text) !important;
+}
+
+/* Placeholder text — keep it visibly lighter than typed text on both themes */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;          /* gray-400 */
+  -webkit-text-fill-color: #9ca3af !important;
+  opacity: 1;
 }
 
 /* ── Labels & helper text ─────────────────────────────────────────────────── */
