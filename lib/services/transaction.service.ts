@@ -762,21 +762,28 @@ export class TransactionService {
       });
     });
 
-    // Audit log is fire-and-forget; not part of the financial transaction.
-    void prisma.auditLog.create({
-      data: {
-        userId: tellerId,
-        userName: tellerName,
-        action: 'MARK_TRANSACTION_PAID',
-        entity: 'Transaction',
-        entityId: transactionId,
-        changes: {
-          paidByName: tellerName,
-          ghsAmount: Number(updated.ghsAmount),
-          receivingMode: updated.receivingMode,
+    // Audit log + notification dismissal are fire-and-forget.
+    void Promise.all([
+      prisma.auditLog.create({
+        data: {
+          userId: tellerId,
+          userName: tellerName,
+          action: 'MARK_TRANSACTION_PAID',
+          entity: 'Transaction',
+          entityId: transactionId,
+          changes: {
+            paidByName: tellerName,
+            ghsAmount: Number(updated.ghsAmount),
+            receivingMode: updated.receivingMode,
+          },
         },
-      },
-    }).catch((e) => console.error('Audit log error:', e));
+      }),
+      // Mark the ADDITIONAL notification as read so it clears from the bell.
+      prisma.notification.updateMany({
+        where: { transactionId, isRead: false },
+        data: { isRead: true },
+      }),
+    ]).catch((e) => console.error('Post-payment cleanup error:', e));
 
     return updated;
   }

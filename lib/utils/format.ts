@@ -77,63 +77,27 @@ export function buildWhatsAppText(t: {
 }): string {
   const ghs = Number(t.ghsAmount);
   const cad = Number(t.cadAmount);
-  const rate = Number(t.exchangeRateUsed);
-  const mode = t.receivingMode;
-
-  const payMethod = t.paymentMethod === 'E_TRANSFER' ? 'E-Transfer'
-    : t.paymentMethod === 'SPLIT' ? 'Cash + E-Transfer'
-    : 'Cash';
-
-  const modeLabel = mode === 'BANK' ? 'Bank Transfer'
-    : mode === 'MOMO' ? 'Mobile Money'
-    : 'Cash';
 
   const senderName = `${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}`.trim() || '—';
-  const senderPhone = t.sender?.phone ?? '—';
 
-  let receiverSection = '';
   const multiReceivers = t.transactionReceivers ?? [];
+  let receiverLines: string;
   if (multiReceivers.length > 0) {
-    receiverSection = multiReceivers.map((r, i) =>
-      `  Receiver ${i + 1}: ${r.receiverName || '—'} (${r.receiverPhone || '—'}) — GHS ${GHS_FMT.format(Number(r.ghsAmount ?? 0))}`
-    ).join('\n');
+    receiverLines = multiReceivers.map((r) =>
+      `${r.receiverName || '—'} ${r.receiverPhone || ''}`
+    ).join(', ');
   } else if (t.receiversDeferred) {
-    receiverSection = `  Receivers: To be assigned at branch`;
+    receiverLines = 'To be assigned at branch';
   } else {
     const rName = `${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}`.trim() || '—';
-    const rPhone = t.receiver?.phone ?? '—';
-    receiverSection = `  ${rName} (${rPhone})`;
+    const rPhone = t.receiver?.phone ?? '';
+    receiverLines = `${rName} ${rPhone}`.trim();
   }
 
-  let payoutDetail = '';
-  if (mode === 'MOMO' && t.momoNumber) {
-    const momoCharge = ghs * 0.02;
-    const netGHS = ghs - momoCharge;
-    payoutDetail = `\nMoMo No.: ${t.momoNumber}${t.momoName ? `\nMoMo Name: ${t.momoName}` : ''}\nGross GHS: ${GHS_FMT.format(ghs)}\nMoMo Charges (2%): -GHS ${GHS_FMT.format(momoCharge)}\nAmount to Receive: GHS ${GHS_FMT.format(netGHS)}`;
-  } else if (mode === 'BANK' && t.bankAccountNo) {
-    payoutDetail = `\nBank: ${t.bankName ?? '—'}\nAccount No.: ${t.bankAccountNo}\nAccount Name: ${t.bankAccountName ?? '—'}${t.bankBranch ? `\nBranch: ${t.bankBranch}` : ''}`;
-  }
-
-  const lines: string[] = [
-    `⚡ IMMEDIATE TRANSFER — Andy D Enterprise`,
-    `─────────────────────────────`,
-    `Code: ${t.transactionCode}`,
-    `Branch: ${t.receivingPoint?.name ?? '—'}`,
-    ``,
-    `SENDER`,
-    `  ${senderName} · ${senderPhone}`,
-    ``,
-    `RECEIVER(S)`,
-    receiverSection,
-    ``,
-    `AMOUNT`,
-    `  CAD: $${CAD_FMT.format(cad)}  (paid via ${payMethod})`,
-    `  GHS: ${GHS_FMT.format(ghs)}  (@ 1 CAD = ${GHS_FMT.format(rate)} GHS)`,
-    ``,
-    `PAYOUT MODE: ${modeLabel}${payoutDetail}`,
-  ];
-
-  if (t.notes) lines.push(``, `Note: ${t.notes}`);
-
-  return lines.join('\n');
+  return [
+    `Sender: ${senderName}`,
+    `Receiver: ${receiverLines}`,
+    `GHS: ${GHS_FMT.format(ghs)}`,
+    `CAD: $${CAD_FMT.format(cad)}`,
+  ].join('\n');
 }

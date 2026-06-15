@@ -216,27 +216,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    void prisma.auditLog.create({
-      data: {
-        userId: tellerId,
-        userName: tellerName,
-        action: 'DISBURSE_MULTI_RECEIVER',
-        entity: 'Transaction',
-        entityId: transactionId,
-        changes: JSON.parse(JSON.stringify({
-          transactionCode: transaction.transactionCode,
-          allocationCount: allocations.length,
-          totalGHS,
-          tellerName,
-          allocations: allocations.map((a) => ({
-            receiverId: a.receiverId ?? null,
-            receiverName: a.receiverName ?? null,
-            receiverPhone: a.receiverPhone ?? null,
-            ghsAmount: a.ghsAmount,
+    void Promise.all([
+      prisma.auditLog.create({
+        data: {
+          userId: tellerId,
+          userName: tellerName,
+          action: 'DISBURSE_MULTI_RECEIVER',
+          entity: 'Transaction',
+          entityId: transactionId,
+          changes: JSON.parse(JSON.stringify({
+            transactionCode: transaction.transactionCode,
+            allocationCount: allocations.length,
+            totalGHS,
+            tellerName,
+            allocations: allocations.map((a) => ({
+              receiverId: a.receiverId ?? null,
+              receiverName: a.receiverName ?? null,
+              receiverPhone: a.receiverPhone ?? null,
+              ghsAmount: a.ghsAmount,
+            })),
           })),
-        })),
-      },
-    }).catch((e) => console.error('Audit log error:', e));
+        },
+      }),
+      prisma.notification.updateMany({
+        where: { transactionId, isRead: false },
+        data: { isRead: true },
+      }),
+    ]).catch((e) => console.error('Post-payment cleanup error:', e));
 
     const updated = await prisma.transaction.findUnique({
       where: { id: transactionId },

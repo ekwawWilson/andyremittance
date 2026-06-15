@@ -2,15 +2,10 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111111;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* App always uses light surfaces — do not invert colours in OS dark mode */
 
 /*
  * Readable-standard typography baseline.
@@ -41,6 +36,14 @@ th, td {
 /* ── Form controls ────────────────────────────────────────────────────────── */
 input, select, textarea, button {
   font-size: 0.9375rem;    /* 15px — match body so inputs never look smaller */
+}
+
+/* Force black text in all form fields — prevents OS dark-mode from making
+   typed text invisible on white input backgrounds on mobile */
+input, select, textarea {
+  color: #111111;
+  background-color: #ffffff;
+  -webkit-text-fill-color: #111111; /* overrides iOS/Safari autofill colour */
 }
 
 /* ── Labels & helper text ─────────────────────────────────────────────────── */
