@@ -15,7 +15,7 @@ export default function SendersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', idType: '', idNumber: '' });
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', phone: '', city: '', idType: '', idNumber: '' });
   const [formError, setFormError] = useState('');
   const [pendingAdditionalCount, setPendingAdditionalCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -62,7 +62,7 @@ export default function SendersPage() {
     if (res.success) {
       setShowModal(false);
       fetchSenders(search);
-      setFormData({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', idType: '', idNumber: '' });
+      setFormData({ firstName: '', lastName: '', phone: '', city: '', idType: '', idNumber: '' });
     } else {
       setFormError(res.error || 'Failed to create sender');
     }
@@ -75,9 +75,7 @@ export default function SendersPage() {
     const res = await apiClient.updateSender(editSender.id, {
       firstName: editSender.firstName,
       lastName: editSender.lastName,
-      email: editSender.email,
       phone: editSender.phone,
-      address: editSender.address,
       city: editSender.city,
       idType: editSender.idType,
       idNumber: editSender.idNumber,
@@ -127,7 +125,7 @@ export default function SendersPage() {
           <Input
             id="search-senders"
             type="text"
-            placeholder="Search by name, phone, or email…"
+            placeholder="Search by name or phone…"
             value={search}
             onChange={(e) => {
               const q = e.target.value;
@@ -174,7 +172,6 @@ export default function SendersPage() {
                   <th className="w-10 py-3 px-2"></th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Name</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Phone</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Email</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">City</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Receivers</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Txns</th>
@@ -201,7 +198,6 @@ export default function SendersPage() {
                           </td>
                           <td className="py-3 px-4"><Link href={`/sending/senders/${s.id}`} className="text-blue-600 hover:underline font-medium">{s.firstName} {s.lastName}</Link></td>
                           <td className="py-3 px-4 text-gray-600">{s.phone}</td>
-                          <td className="py-3 px-4 text-gray-600">{s.email || '—'}</td>
                           <td className="py-3 px-4 text-gray-600">{s.city || '—'}</td>
                           <td className="py-3 px-4 text-gray-600">{s.receivers?.length ?? 0}</td>
                           <td className="py-3 px-4 text-gray-600">{s._count?.transactions ?? 0}</td>
@@ -218,7 +214,7 @@ export default function SendersPage() {
                         </tr>
                         {isOpen && (
                           <tr className="border-b bg-blue-50">
-                            <td colSpan={8} className="px-4 py-3 pl-12">
+                            <td colSpan={7} className="px-4 py-3 pl-12">
                               {!hasReceivers ? (
                                 <p className="text-xs text-gray-400 italic py-1">No receivers added for this sender yet.</p>
                               ) : (
@@ -227,7 +223,6 @@ export default function SendersPage() {
                                     <tr className="border-b border-blue-200">
                                       <th className="text-left py-1.5 text-gray-500 font-medium">Receiver</th>
                                       <th className="text-left py-1.5 text-gray-500 font-medium">Phone</th>
-                                      <th className="text-left py-1.5 text-gray-500 font-medium">Relationship</th>
                                       <th className="text-left py-1.5 text-gray-500 font-medium">Preferred Method</th>
                                     </tr>
                                   </thead>
@@ -236,7 +231,6 @@ export default function SendersPage() {
                                       <tr key={r.id} className="border-b border-blue-100 last:border-0">
                                         <td className="py-1.5 text-gray-800 font-medium">{r.firstName} {r.lastName}</td>
                                         <td className="py-1.5 text-gray-600">{r.phone}</td>
-                                        <td className="py-1.5 text-gray-600">{r.relationshipToSender || '—'}</td>
                                         <td className="py-1.5">
                                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${r.preferredMethod === 'CASH' ? 'bg-green-100 text-green-700' : r.preferredMethod === 'BANK' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                                             {r.preferredMethod === 'CASH' ? 'Cash' : r.preferredMethod === 'BANK' ? 'Bank' : 'MoMo'}
@@ -269,8 +263,6 @@ export default function SendersPage() {
             <Input id="ln" label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
           </div>
           <Input id="ph" label="Phone" type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+1 416 555 1234" minLength={7} maxLength={20} required />
-          <Input id="em" label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-          <Input id="addr" label="Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
           <Input id="city" label="City" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
             <Input id="idt" label="ID Type" value={formData.idType} onChange={(e) => setFormData({ ...formData, idType: e.target.value })} placeholder="Passport" />
@@ -292,8 +284,6 @@ export default function SendersPage() {
               <Input id="edit-ln" label="Last Name" value={editSender.lastName} onChange={(e) => setEditSender({ ...editSender, lastName: e.target.value })} required />
             </div>
             <Input id="edit-ph" label="Phone" type="tel" value={editSender.phone} onChange={(e) => setEditSender({ ...editSender, phone: e.target.value })} placeholder="+1 416 555 1234" minLength={7} maxLength={20} required />
-            <Input id="edit-em" label="Email" type="email" value={editSender.email || ''} onChange={(e) => setEditSender({ ...editSender, email: e.target.value })} />
-            <Input id="edit-addr" label="Address" value={editSender.address || ''} onChange={(e) => setEditSender({ ...editSender, address: e.target.value })} />
             <Input id="edit-city" label="City" value={editSender.city || ''} onChange={(e) => setEditSender({ ...editSender, city: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <Input id="edit-idt" label="ID Type" value={editSender.idType || ''} onChange={(e) => setEditSender({ ...editSender, idType: e.target.value })} placeholder="Passport" />

@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 import Link from 'next/link';
 import Modal from '@/components/ui/Modal';
 import TransactionReceipt from '@/components/ui/TransactionReceipt';
-import { fmtCAD, fmtGHS } from '@/lib/utils/format';
+import { fmtCAD, fmtGHS, buildWhatsAppText } from '@/lib/utils/format';
 
 export default function TransactionsPage() {
   const { user } = useAuth();
@@ -220,6 +220,20 @@ export default function TransactionsPage() {
   // ── Receipt ───────────────────────────────────────────────────────────────
   const [receiptTx, setReceiptTx] = useState<Transaction | null>(null);
 
+  // ── WhatsApp copy ─────────────────────────────────────────────────────────
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyWhatsApp = (t: Transaction) => {
+    navigator.clipboard.writeText(buildWhatsAppText({
+      ...t,
+      cadAmount: Number(t.cadAmount),
+      ghsAmount: Number(t.ghsAmount),
+      exchangeRateUsed: Number(t.exchangeRateUsed),
+    }));
+    setCopiedId(t.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // ── Collect remaining ─────────────────────────────────────────────────────
   const [collectTx, setCollectTx] = useState<Transaction | null>(null);
   const [collectMethod, setCollectMethod] = useState('CASH');
@@ -364,6 +378,15 @@ export default function TransactionsPage() {
                     </Link>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <TransactionStatusBadge status={t.status} />
+                      {t.codeType === 'ADDITIONAL' && (
+                        <button type="button" title="Copy WhatsApp message" onClick={() => copyWhatsApp(t)}
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${copiedId === t.id ? 'bg-green-100 text-green-700' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                          {copiedId === t.id
+                            ? <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                          }
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-gray-800 truncate">
@@ -465,6 +488,16 @@ export default function TransactionsPage() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex gap-1.5 flex-wrap">
+                          {t.codeType === 'ADDITIONAL' && (
+                            <button type="button" title="Copy WhatsApp message" onClick={() => copyWhatsApp(t)}
+                              className={`inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors ${copiedId === t.id ? 'bg-green-100 text-green-700' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                              {copiedId === t.id ? (
+                                <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Copied</>
+                              ) : (
+                                <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Copy</>
+                              )}
+                            </button>
+                          )}
                           {canReprint && (
                             <button type="button" onClick={() => setReceiptTx(t)}
                               className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors font-medium">

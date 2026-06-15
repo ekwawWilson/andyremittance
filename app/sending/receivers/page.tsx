@@ -25,12 +25,11 @@ function MethodBadge({ method }: { method: string }) {
 }
 
 const EMPTY_FORM = {
-  senderId: '', firstName: '', lastName: '', phone: '', email: '',
+  senderId: '', firstName: '', lastName: '', phone: '',
   idType: '', idNumber: '',
   preferredMethod: 'CASH' as 'CASH' | 'BANK' | 'MOMO',
   bankName: '', bankAccount: '', bankBranch: '',
   momoNumber: '', momoProvider: '',
-  relationshipToSender: '',
 };
 
 // ─── SenderCombobox ───────────────────────────────────────────────────────────
@@ -221,17 +220,10 @@ function ReceiverForm({ data, onChange, error, onSubmit, onCancel, submitLabel, 
       </div>
 
       {/* Contact */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-red-500">*</span></label>
-          <input type="tel" value={data.phone} onChange={(e) => onChange({ phone: e.target.value })} required
-            placeholder="+233 20 123 4567" minLength={9} maxLength={15} className={inputCls} />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-          <input type="email" value={data.email} onChange={(e) => onChange({ email: e.target.value })}
-            placeholder="optional" className={inputCls} />
-        </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-red-500">*</span></label>
+        <input type="tel" value={data.phone} onChange={(e) => onChange({ phone: e.target.value })} required
+          placeholder="+233 20 123 4567" minLength={9} maxLength={15} className={inputCls} />
       </div>
 
       {/* ID */}
@@ -275,13 +267,6 @@ function ReceiverForm({ data, onChange, error, onSubmit, onCancel, submitLabel, 
 
       {/* Payment fields */}
       <PaymentFields method={data.preferredMethod} data={data} onChange={onChange} />
-
-      {/* Relationship */}
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Relationship to Sender</label>
-        <input value={data.relationshipToSender} onChange={(e) => onChange({ relationshipToSender: e.target.value })}
-          placeholder="e.g. Spouse, Child, Business Partner" className={inputCls} />
-      </div>
 
       <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
         <button type="button" onClick={onCancel}
@@ -387,7 +372,6 @@ export default function ReceiversPage() {
       firstName: r.firstName,
       lastName: r.lastName,
       phone: r.phone,
-      email: r.email ?? '',
       idType: r.idType ?? '',
       idNumber: r.idNumber ?? '',
       preferredMethod: (r.preferredMethod as 'CASH' | 'BANK' | 'MOMO') ?? 'CASH',
@@ -396,7 +380,6 @@ export default function ReceiversPage() {
       bankBranch: r.bankBranch ?? '',
       momoNumber: r.momoNumber ?? '',
       momoProvider: r.momoProvider ?? '',
-      relationshipToSender: r.relationshipToSender ?? '',
     });
     setEditSenderName(r.sender ? `${r.sender.firstName} ${r.sender.lastName}` : '');
     setEditError('');
@@ -415,14 +398,12 @@ export default function ReceiversPage() {
         firstName: createData.firstName,
         lastName: createData.lastName,
         phone: createData.phone,
-        email: createData.email || undefined,
         preferredMethod: createData.preferredMethod,
         bankName: createData.bankName || undefined,
         bankAccount: createData.bankAccount || undefined,
         bankBranch: createData.bankBranch || undefined,
         momoNumber: createData.momoNumber || undefined,
         momoProvider: createData.momoProvider || undefined,
-        relationshipToSender: createData.relationshipToSender || undefined,
       });
       if (res.success) {
         setShowCreate(false);
@@ -449,14 +430,12 @@ export default function ReceiversPage() {
         firstName: editData.firstName,
         lastName: editData.lastName,
         phone: editData.phone,
-        email: editData.email || undefined,
         preferredMethod: editData.preferredMethod,
         bankName: editData.bankName || undefined,
         bankAccount: editData.bankAccount || undefined,
         bankBranch: editData.bankBranch || undefined,
         momoNumber: editData.momoNumber || undefined,
         momoProvider: editData.momoProvider || undefined,
-        relationshipToSender: editData.relationshipToSender || undefined,
         ...(editData.senderId ? { senderId: editData.senderId } : {}),
       });
       if (res.success) {
@@ -549,7 +528,6 @@ export default function ReceiversPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Phone</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Sender</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Payout</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Relationship</th>
                   <th className="text-right py-3 px-5 text-xs font-medium text-gray-400">Actions</th>
                 </tr>
               </thead>
@@ -586,7 +564,6 @@ export default function ReceiversPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-gray-500 text-xs">{r.relationshipToSender || <span className="text-gray-300">—</span>}</td>
                     <td className="py-3.5 px-5">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => router.push(`/sending/receivers/${r.id}`)}

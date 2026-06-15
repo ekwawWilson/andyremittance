@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, Sender, Receiver, ReceivingPoint, ExchangeRate, Transaction, TransactionReceiver } from '@/lib/api-client';
 import TransactionReceipt from '@/components/ui/TransactionReceipt';
 import { transactionCodeTemplate } from '@/lib/utils/transaction-code';
-import { fmtCAD } from '@/lib/utils/format';
+import { fmtCAD, buildWhatsAppText } from '@/lib/utils/format';
 
 // ─── Portal dropdown ──────────────────────────────────────────────────────────
 // Renders the dropdown menu in document.body to escape any overflow:hidden parent.
@@ -513,6 +513,7 @@ export default function NewTransactionPage() {
   const [success, setSuccess] = useState('');
   const [lastCreatedTx, setLastCreatedTx] = useState<(Transaction & { transactionReceivers?: TransactionReceiver[] }) | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Derived
   const officialRate = rate ? Number(rate.cadToGhs) : 0;
@@ -1168,7 +1169,7 @@ export default function NewTransactionPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50/60 border-b border-gray-100">
-                    {['Code', 'Sender → Receiver', 'CAD', 'GHS', 'Status'].map((h) => (
+                    {['Code', 'Sender → Receiver', 'CAD', 'GHS', 'Status', ''].map((h) => (
                       <th key={h} className="text-left py-2.5 px-4 text-xs font-medium text-gray-400">{h}</th>
                     ))}
                   </tr>
@@ -1199,6 +1200,30 @@ export default function NewTransactionPage() {
                           'bg-red-100 text-red-600'}`}>
                           {t.status}
                         </span>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {t.codeType === 'ADDITIONAL' && (
+                          <button
+                            type="button"
+                            title="Copy WhatsApp message"
+                            onClick={() => {
+                              navigator.clipboard.writeText(buildWhatsAppText({
+                                ...t,
+                                cadAmount: Number(t.cadAmount),
+                                ghsAmount: Number(t.ghsAmount),
+                                exchangeRateUsed: Number(t.exchangeRateUsed),
+                              }));
+                              setCopiedId(t.id);
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${copiedId === t.id ? 'bg-green-100 text-green-700' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                            {copiedId === t.id ? (
+                              <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Copied</>
+                            ) : (
+                              <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Copy</>
+                            )}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

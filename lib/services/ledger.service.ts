@@ -518,11 +518,11 @@ export class LedgerService {
       };
     }
 
-    if (Number(payoutAccount.balance) < ghsAmount) {
+    // ADDITIONAL transactions are pre-funded at creation time via fundAdditionalTillForImmediateTransaction.
+    // Skip the balance check for them so disbursement is never blocked by timing or float gaps.
+    if (resolvedCodeType !== 'ADDITIONAL' && Number(payoutAccount.balance) < ghsAmount) {
       throw new Error(
-        resolvedCodeType === 'ADDITIONAL'
-          ? `Insufficient ADDITIONAL_TILL balance. Available: GHS ${Number(payoutAccount.balance).toFixed(2)}`
-          : `Insufficient till balance. Available: GHS ${Number(payoutAccount.balance).toFixed(2)}`
+        `Insufficient till balance. Available: GHS ${Number(payoutAccount.balance).toFixed(2)}`
       );
     }
 
