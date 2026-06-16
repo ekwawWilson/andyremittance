@@ -52,7 +52,7 @@ export default function LoginPage() {
           <div className="p-1 rounded-[18px] bg-white shadow-[0_4px_24px_rgba(37,99,235,0.18)] ring-1 ring-blue-100">
             <AndyDLogo size={56} variant="color" />
           </div>
-          <h1 className="mt-4 text-[18px] font-bold tracking-tight text-gray-900">Andy D Enterprise</h1>
+          <h1 className="mt-4 text-[18px] font-bold tracking-tight text-gray-900">Petros Remittance</h1>
           <p className="mt-0.5 text-[13px] text-gray-400 font-medium">Remittance Portal</p>
         </div>
 
@@ -80,7 +80,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@andyd.com"
+                placeholder="you@petrosremittance.com"
                 required
                 autoComplete="email"
                 className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500 transition-all duration-150"
@@ -154,7 +154,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[11px] text-gray-400 mt-5 tracking-wide">
-          © {new Date().getFullYear()} Andy D Enterprise · Authorized personnel only
+          © {new Date().getFullYear()} Petros Remittance · Authorized personnel only
         </p>
 
       </div>
