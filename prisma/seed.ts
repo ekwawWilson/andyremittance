@@ -115,9 +115,8 @@ async function seedUsers(accraId: string, kumasiId: string) {
 
 async function seedReceivingPoints() {
   const points = [
-    { name: 'Accra Main Branch',    code: 'ACCRA',   address: '123 Independence Avenue', city: 'Accra',   phone: '+233 20 123 4567' },
-    { name: 'Kumasi Branch',        code: 'KUMASI',  address: '456 Kejetia Road',         city: 'Kumasi',  phone: '+233 20 765 4321' },
-    { name: 'Tamale Branch',        code: 'TAMALE',  address: '789 Central Market Road',  city: 'Tamale',  phone: '+233 20 555 1234' },
+    { name: 'Accra Main Branch',    code: 'ACCRA',   address: 'Kantamanto Opposite Ecobank ', city: 'Accra',   phone: '+233 592761463 ' },
+    { name: 'Kumasi Branch',        code: 'KUMASI',  address: 'Ashtown, Opposite AshTown Post Office',         city: 'Kumasi',  phone: '+233 20 815 3941' },
   ];
 
   const ids: Record<string, string> = {};

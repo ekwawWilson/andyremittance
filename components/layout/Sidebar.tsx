@@ -336,7 +336,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                   <button
                     type="button"
                     onClick={() => setExpanded(isExpanded ? null : item.name)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[15px] font-medium transition-colors
                       ${hasActive ? `${acc.activeText} ${acc.activeBg}` : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
                   >
                     <span className="shrink-0 opacity-70">{item.icon}</span>
@@ -354,7 +354,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                           <Link
                             key={child.name}
                             href={child.href}
-                            className={`flex items-center gap-2 px-2.5 py-1.5 text-[12px] font-medium transition-colors rounded
+                            className={`flex items-center gap-2 px-2.5 py-1.5 text-[13px] font-medium transition-colors rounded
                               ${active ? `${acc.activeText} font-semibold` : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}
                           >
                             {child.name}
@@ -373,7 +373,7 @@ export default function Sidebar({ portal }: SidebarProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors border-l-2
+                className={`flex items-center gap-2.5 px-3 py-2 text-[15px] font-medium transition-colors border-l-2
                   ${isActive
                     ? `${acc.activeText} ${acc.activeBg} ${acc.activeBorder}`
                     : 'text-gray-600 border-transparent hover:bg-gray-50 hover:text-gray-900'}`}
