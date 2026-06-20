@@ -38,51 +38,58 @@ async function seedUsers(accraId: string, kumasiId: string) {
 
   const users = [
     {
-      email: 'admin@andydenterprise.com',
-      firstName: 'Andy',
-      lastName: 'D',
+      email: 'edward.wilson@andydenterprise.com',
+      firstName: 'Edward',
+      lastName: 'Wilson',
       role: UserRole.SUPER_ADMIN,
       receivingPointId: null,
     },
     {
-      email: 'sending.admin@andydenterprise.com',
-      firstName: 'James',
-      lastName: 'Osei',
+      email: 'jeffery.asante@andydenterprise.com',
+      firstName: 'Jeffery',
+      lastName: 'Asante',
       role: UserRole.SENDING_ADMIN,
       receivingPointId: null,
     },
     {
-      email: 'receiving.admin@andydenterprise.com',
-      firstName: 'Abena',
+      email: 'denise.asante@andydenterprise.com',
+      firstName: 'Denise',
       lastName: 'Asante',
+      role: UserRole.SENDING_ADMIN,
+      receivingPointId: null,
+    },
+    {
+      email: 'joseph.asenso@andydenterprise.com',
+      firstName: 'Joseph',
+      lastName: 'Asenso Twum',
       role: UserRole.RECEIVING_ADMIN,
       receivingPointId: accraId,
     },
     {
-      email: 'agent@andydenterprise.com',
-      firstName: 'John',
-      lastName: 'Smith',
-      role: UserRole.SENDING_AGENT,
-      receivingPointId: null,
-    },
-    {
-      email: 'manager.accra@andydenterprise.com',
+      email: 'kofi.boateng@andydenterprise.com',
       firstName: 'Kofi',
-      lastName: 'Mensah',
-      role: UserRole.MANAGER,
-      receivingPointId: accraId,
+      lastName: 'Boateng',
+      role: UserRole.RECEIVING_ADMIN,
+      receivingPointId: kumasiId,
     },
     {
-      email: 'teller.accra@andydenterprise.com',
-      firstName: 'Ama',
-      lastName: 'Owusu',
+      email: 'angela.agyeman@andydenterprise.com',
+      firstName: 'Angela',
+      lastName: 'Agyeman Sasu',
       role: UserRole.TELLER,
       receivingPointId: accraId,
     },
     {
-      email: 'teller.kumasi@andydenterprise.com',
-      firstName: 'Kweku',
-      lastName: 'Boateng',
+      email: 'aquila.wiafe@andydenterprise.com',
+      firstName: 'Aquila',
+      lastName: 'Wiafe',
+      role: UserRole.TELLER,
+      receivingPointId: accraId,
+    },
+    {
+      email: 'kofi.kumasi@andydenterprise.com',
+      firstName: 'Kofi',
+      lastName: 'Kumasi',
       role: UserRole.TELLER,
       receivingPointId: kumasiId,
     },
@@ -186,7 +193,6 @@ async function seedVaults(pointIds: Record<string, string>) {
   const vaults = [
     { code: 'VAULT-ACCRA',   name: 'Accra Vault',   pointCode: 'ACCRA' },
     { code: 'VAULT-KUMASI',  name: 'Kumasi Vault',  pointCode: 'KUMASI' },
-    { code: 'VAULT-TAMALE',  name: 'Tamale Vault',  pointCode: 'TAMALE' },
   ];
 
   for (const v of vaults) {
@@ -211,8 +217,9 @@ async function seedVaults(pointIds: Record<string, string>) {
 
 async function seedTills(userIds: Record<string, string>) {
   const tellers = [
-    { email: 'teller.accra@andydenterprise.com',  name: 'Ama Owusu' },
-    { email: 'teller.kumasi@andydenterprise.com', name: 'Kweku Boateng' },
+    { email: 'angela.agyeman@andydenterprise.com',  name: 'Angela Agyeman Sasu' },
+    { email: 'aquila.wiafe@andydenterprise.com',    name: 'Aquila Wiafe' },
+    { email: 'kofi.kumasi@andydenterprise.com',     name: 'Kofi Kumasi' },
   ];
 
   for (const t of tellers) {
@@ -420,7 +427,7 @@ async function main() {
   await seedTills(userIds);
 
   console.log('\nSenders & receivers…');
-  const { senderCount, receiverCount } = await seedSenders(userIds['agent@andydenterprise.com']);
+  const { senderCount, receiverCount } = await seedSenders(userIds['jeffery.asante@andydenterprise.com']);
   console.log(`  → ${senderCount} sender(s), ${receiverCount} receiver(s)`);
 
   console.log('\nRole defaults…');
@@ -429,14 +436,15 @@ async function main() {
   console.log('\n─────────────────────────────────────────────');
   console.log('Seed complete.\n');
   console.log('Login credentials (all roles use the same password):');
-  console.log('  Password:          Andy@2025\n');
-  console.log('  SUPER_ADMIN        admin@andydenterprise.com');
-  console.log('  SENDING_ADMIN      sending.admin@andydenterprise.com');
-  console.log('  RECEIVING_ADMIN    receiving.admin@andydenterprise.com');
-  console.log('  SENDING_AGENT      agent@andydenterprise.com');
-  console.log('  MANAGER (Accra)    manager.accra@andydenterprise.com');
-  console.log('  TELLER  (Accra)    teller.accra@andydenterprise.com');
-  console.log('  TELLER  (Kumasi)   teller.kumasi@andydenterprise.com');
+  console.log('  Password:               Andy@2025\n');
+  console.log('  SUPER_ADMIN             edward.wilson@andydenterprise.com');
+  console.log('  SENDING_ADMIN           jeffery.asante@andydenterprise.com');
+  console.log('  SENDING_ADMIN           denise.asante@andydenterprise.com');
+  console.log('  RECEIVING_ADMIN (Accra) joseph.asenso@andydenterprise.com');
+  console.log('  RECEIVING_ADMIN (Kumasi)kofi.boateng@andydenterprise.com');
+  console.log('  TELLER (Accra)          angela.agyeman@andydenterprise.com');
+  console.log('  TELLER (Accra)          aquila.wiafe@andydenterprise.com');
+  console.log('  TELLER (Kumasi)         kofi.kumasi@andydenterprise.com');
   console.log('─────────────────────────────────────────────\n');
 }
 
