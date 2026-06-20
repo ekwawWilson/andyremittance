@@ -146,7 +146,7 @@ function SenderSearchBox({
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState<Sender | null>(null);
   const [addNew, setAddNew] = useState(false);
-  const [newData, setNewData] = useState({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '' });
+  const [newData, setNewData] = useState({ firstName: '', lastName: '', phone: '' });
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -191,11 +191,6 @@ function SenderSearchBox({
         <input placeholder="Last Name *" value={newData.lastName} onChange={(e) => setNewData({ ...newData, lastName: e.target.value })} className={inputCls} />
       </div>
       <input type="tel" placeholder="Phone * e.g. +1 416 555 1234" value={newData.phone} onChange={(e) => setNewData({ ...newData, phone: e.target.value })} minLength={7} maxLength={20} className={inputCls} />
-      <input placeholder="Email" value={newData.email} onChange={(e) => setNewData({ ...newData, email: e.target.value })} className={inputCls} />
-      <div className="grid grid-cols-2 gap-2">
-        <input placeholder="Address" value={newData.address} onChange={(e) => setNewData({ ...newData, address: e.target.value })} className={inputCls} />
-        <input placeholder="City" value={newData.city} onChange={(e) => setNewData({ ...newData, city: e.target.value })} className={inputCls} />
-      </div>
       <button type="button" disabled={saving} onClick={async () => {
         if (!newData.firstName.trim() || !newData.lastName.trim() || !newData.phone.trim()) return;
         setSaving(true);
@@ -220,7 +215,6 @@ function SenderSearchBox({
         <input value={editDraft.lastName} onChange={(e) => setEditDraft({ ...editDraft, lastName: e.target.value })} className={inputCls} placeholder="Last Name" />
       </div>
       <input value={editDraft.phone} onChange={(e) => setEditDraft({ ...editDraft, phone: e.target.value })} className={inputCls} placeholder="Phone" />
-      <input value={editDraft.email ?? ''} onChange={(e) => setEditDraft({ ...editDraft, email: e.target.value })} className={inputCls} placeholder="Email" />
       <button type="button" disabled={saving} onClick={async () => {
         setSaving(true);
         await onEditSave(editDraft);
@@ -299,7 +293,7 @@ function SenderSearchBox({
           {canCreate && (
             <button type="button" onClick={() => {
               const parts = q.trim().split(/\s+/);
-              setNewData({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phone: '', email: '', address: '', city: '' });
+              setNewData({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phone: '' });
               setAddNew(true);
               setOpen(false);
               setQ('');
@@ -325,7 +319,7 @@ function ReceiverSearchBox({
   const [results, setResults] = useState<Receiver[]>([]);
   const [open, setOpen] = useState(false);
   const [addNew, setAddNew] = useState(false);
-  const [newData, setNewData] = useState({ firstName: '', lastName: '', phone: '', email: '', relationshipToSender: '' });
+  const [newData, setNewData] = useState({ firstName: '', lastName: '', phone: '', relationshipToSender: '' });
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -385,7 +379,6 @@ function ReceiverSearchBox({
         <input placeholder="Last Name *" value={newData.lastName} onChange={(e) => setNewData({ ...newData, lastName: e.target.value })} className={inputCls} />
       </div>
       <input type="tel" placeholder="Phone * e.g. 055 123 4567" value={newData.phone} onChange={(e) => setNewData({ ...newData, phone: e.target.value })} minLength={9} maxLength={15} className={inputCls} />
-      <input placeholder="Email" value={newData.email} onChange={(e) => setNewData({ ...newData, email: e.target.value })} className={inputCls} />
       <input placeholder="Relationship (Family, Friend, Business)" value={newData.relationshipToSender} onChange={(e) => setNewData({ ...newData, relationshipToSender: e.target.value })} className={inputCls} />
       <button type="button" disabled={saving} onClick={async () => {
         if (!newData.firstName.trim() || !newData.phone.trim()) return;
@@ -452,7 +445,7 @@ function ReceiverSearchBox({
           {canCreate && (
             <button type="button" onClick={() => {
               const parts = q.trim().split(/\s+/);
-              setNewData({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phone: '', email: '', relationshipToSender: '' });
+              setNewData({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phone: '', relationshipToSender: '' });
               setOpen(false);
               setAddNew(true);
               setQ('');
