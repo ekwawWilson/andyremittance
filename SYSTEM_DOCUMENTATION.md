@@ -22,8 +22,9 @@
 13. [Partial Payments (Sub-Payments)](#13-partial-payments-sub-payments)
 14. [Business Rules & Validation Guards](#14-business-rules--validation-guards)
 15. [Notifications & Audit Trail](#15-notifications--audit-trail)
-16. [API Route Reference](#16-api-route-reference)
-17. [Portal Page Map](#17-portal-page-map)
+16. [Excel Day-Sheet Import](#16-excel-day-sheet-import)
+17. [API Route Reference](#17-api-route-reference)
+18. [Portal Page Map](#18-portal-page-map)
 
 ---
 
@@ -145,6 +146,7 @@
 | `VIEW_ALL_TRANSACTIONS` | SENDING_ADMIN, ADMIN, RECEIVING_ADMIN, MANAGER |
 | `SYNC_TRANSACTIONS` | SENDING_ADMIN, ADMIN |
 | `MARK_PAID` | TELLER, MANAGER, RECEIVING_ADMIN, ADMIN |
+| `IMPORT_TRANSACTIONS` | RECEIVING_ADMIN, MANAGER, ADMIN |
 | `CREATE_RECONCILIATION` | TELLER, MANAGER |
 | `APPROVE_RECONCILIATION` | MANAGER, RECEIVING_ADMIN, ADMIN |
 | `RECEIVING_EOD` | RECEIVING_ADMIN, MANAGER |
@@ -666,7 +668,98 @@ Login events, transaction create/edit/cancel/pay, EOD close, reconciliation subm
 
 ---
 
-## 16. API Route Reference
+## 16. Excel Day-Sheet Import
+
+The sending side does not use the sending portal. They keep their existing
+spreadsheet — one file per business day, one sheet tab per receiving branch —
+and the receiving side uploads it here.
+
+**Page:** `/receiving/import` · **Permission:** `IMPORT_TRANSACTIONS`
+(RECEIVING_ADMIN, MANAGER, ADMIN, SUPER_ADMIN)
+
+### Sheet shape
+
+```
+row 1   08TH SEPTEMBER 2026 TUESDAY ACCRA     ← business date + branch
+row 2   #  | FROM | TO | CAN | USD | GHC      ← header (column order is detected)
+row 3   1  | AYISI | FLORENCE | 4500 | | 37350
+row 7   5  | DORA BARIMAH | DANIEL ARKO NIMAFUL | 3073 | | 25505.9
+row 8   6  | GCB TARKWA BRANCH | A/C 4051120007007 | | | 0   ← bank details for row 7
+row 11  9  | JULIANA | JOYCE OPOKU 0244130552 | 123 | | 1020.9   ← mobile money
+last       | | TOTAL | 19077 | 0 | 158339.1
+```
+
+### Parsing rules
+
+| Rule | Behaviour |
+|---|---|
+| **Business date** | Read from the title row; sets `transactionDate` and therefore the transaction code (`A0809-Txxx`). Editable before import. |
+| **Branch** | Taken from the sheet tab name (`ACCRA`, `KUMASI`), matched against `ReceivingPoint.code`. A `(2)` suffix is stripped and duplicate tabs are flagged. |
+| **Bank payout** | A row whose TO starts with `A/C` is **not** a transaction — it carries the bank details of the row **above** it. That row becomes `receivingMode = BANK`, with the bank name from the detail row's FROM. |
+| **Mobile money** | A TO cell ending in 9–12 digits is `receivingMode = MOMO`. The leading text is the receiver name, the digits the momo number. |
+| **Leading zero** | Momo numbers are normalised to the 10-digit `0XXXXXXXXX` form — a 9-digit number (Excel strips the zero) gets one prepended; `+233…` is converted. |
+| **Cash payout** | Everything else. |
+| **Amounts** | `CAN` → CAD, first `GHC`/`GNC` → GHS, rounded to 2dp. Per-row rate is `GHS/CAD`; the most common value becomes the day's `ExchangeRate`. |
+| **TOTAL row** | Ends the table and is reconciled against the parsed rows — a mismatch is reported. |
+
+### Validation
+
+Rows carrying an **error** are excluded by default and cannot be imported until
+fixed inline in the review grid:
+
+- momo number that does not normalise to 10 digits
+- missing sender name, receiver name, or amount
+- bank row with no account number
+
+Rows carrying a **warning** import normally but are highlighted: `WILL CALL`
+receivers, unrecognised momo prefixes, a per-row rate more than 2% off the day's
+rate, and rows that already exist for that branch and date.
+
+### What a commit writes
+
+All inside one `prisma.$transaction`:
+
+1. `ExchangeRate` for the business date (reused if one already exists)
+2. `Sender` / `Receiver` records for names not already on file — senders are
+   matched case-insensitively on full name, receivers within their sender
+3. `Transaction` rows with `status = SYNCED`, `syncedToReceiving = true`, and
+   `amountPaidCAD = cadAmount` — the sending side already collected the money, so
+   nothing is outstanding against the sender and no credit-limit check applies
+4. A `REMITTANCE_RECEIPT` journal per transaction (Dr `CASH-CAD` / Cr
+   `INCOME-STANDARD`), so imported volume shows up as revenue on the income
+   statement rather than silently posting nothing on the CAD side
+5. `PAYABLE-GHS-{branchId}` credited with the GHS total plus one `SYNC_ALLOCATION`
+   journal entry — **without this the branch payable is missing and
+   `LedgerService.recordDisbursement` refuses to pay out**
+6. An `AuditLog` row (`action = IMPORT_TRANSACTIONS`, `entity = ImportBatch`,
+   `entityId = <sha256 of the file>`) and a branch `Notification`
+
+All lookups (accounts, senders, existing codes, period status) run *before* the
+write transaction opens; the write itself is a short burst of `createMany` calls.
+Doing per-row lookups inside the transaction exceeded the 120 s timeout on a
+33-row sheet — every awaited query is a network round-trip.
+
+### Business date vs branch date
+
+The teller Pending Payments list defaults its date filter to the branch's own
+`serverDate`. If the sheet is dated anything else the preview raises a
+`DATE_NOT_BRANCH_DATE` warning: the rows still import correctly, but tellers will
+not see them until they widen the filter or the branch advances its business date.
+
+Because imported transactions arrive already SYNCED, they bypass the sending EOD
+entirely and appear in `/receiving/pending` immediately.
+
+### Re-import safety
+
+The file's SHA-256 is stored as the audit entry's `entityId`. Re-uploading the
+same workbook is detected and refused unless `confirmReimport` is set. Independently,
+each row is checked against existing transactions for that branch and date
+(sender + receiver + CAD amount) and matches are pre-excluded.
+
+
+---
+
+## 17. API Route Reference
 
 ### Auth
 | Method | Path | Permission | Description |
@@ -711,6 +804,12 @@ Login events, transaction create/edit/cancel/pay, EOD close, reconciliation subm
 |---|---|---|---|
 | POST/GET | `/api/eod` | SYNC_TRANSACTIONS | Close / list sending EOD |
 | POST/GET | `/api/receiving/eod` | RECEIVING_EOD | Close / list branch EOD |
+
+### Import
+| Method | Path | Permission | Description |
+|---|---|---|---|
+| POST | `/api/import/preview` | IMPORT_TRANSACTIONS | Parse an uploaded day-sheet; read-only, returns the classified rows |
+| POST | `/api/import/commit` | IMPORT_TRANSACTIONS | Create the reviewed rows as SYNCED transactions + fund the branch payable |
 
 ### Sync
 | Method | Path | Permission | Description |
@@ -781,7 +880,7 @@ Login events, transaction create/edit/cancel/pay, EOD close, reconciliation subm
 
 ---
 
-## 17. Portal Page Map
+## 18. Portal Page Map
 
 ### Sending Portal (`/sending/`)
 
@@ -812,6 +911,7 @@ Login events, transaction create/edit/cancel/pay, EOD close, reconciliation subm
 |---|---|
 | `/receiving` | Dashboard: pending disbursements, till balance, float health, quick actions |
 | `/receiving/pending` | SYNCED transactions ready to disburse; search by code/name |
+| `/receiving/import` | Upload the sending side's Excel day-sheet; review and post as synced transactions |
 | `/receiving/disbursements` | Disbursement history with teller/mode/search filters; CSV/PDF export |
 | `/receiving/till` | Till balance, statement, load from vault, denomination calculator, print slip |
 | `/receiving/reconciliation` | Daily recon form: denomination count, variance, sign-off |
