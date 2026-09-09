@@ -38,34 +38,13 @@ export default function LoginPage() {
         <div className="absolute bottom-0 left-0 w-52 h-52 bg-blue-600/8 border-t border-r border-blue-500/15" />
         <div className="absolute inset-x-0 top-[45%] h-px bg-white/5" />
 
-        <div className="relative flex-1 flex flex-col justify-center px-10 xl:px-16 pb-16 pt-16">
-          <p className="text-blue-400 text-xs font-semibold uppercase tracking-[0.18em] mb-5">
-            Canada — Ghana Remittance
-          </p>
+        <div className="relative flex-1 flex flex-col justify-center px-10 xl:px-16">
           <h1 className="text-white text-4xl xl:text-5xl font-bold leading-[1.15] tracking-tight">
-            Move money<br />with speed and<br />
-            <span className="text-blue-400">trust.</span>
+            ANDY D<br />ENTERPRISE
           </h1>
-          <p className="mt-6 text-slate-400 text-base leading-relaxed max-w-sm">
-            A secure, end-to-end remittance management platform — sending, receiving, reconciliation and accounting in one place.
+          <p className="mt-5 text-blue-400 text-lg xl:text-xl font-semibold uppercase tracking-[0.18em]">
+            Kantamanto
           </p>
-
-          <div className="mt-12 flex items-center gap-10">
-            {[
-              { value: 'Instant',    label: 'Sync' },
-              { value: 'Multi-till', label: 'Support' },
-              { value: 'Full',       label: 'Audit Trail' },
-            ].map((s) => (
-              <div key={s.label}>
-                <p className="text-white text-sm font-bold">{s.value}</p>
-                <p className="text-slate-500 text-xs mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative px-10 pb-8">
-          <p className="text-slate-600 text-xs">© {new Date().getFullYear()} Petros Remittance</p>
         </div>
       </div>
 

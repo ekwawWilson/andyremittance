@@ -26,12 +26,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     const token = apiClient.getToken();
     if (token) {
-      const response = await apiClient.getProfile();
+      let response = await apiClient.getProfile();
+
+      // A transient failure (offline blip, timeout, or a fetch aborted because the
+      // user navigated while it was in flight) is not proof the session is bad.
+      // Retry once before drawing any conclusion.
+      if (!response.success && !response.authFailed) {
+        response = await apiClient.getProfile();
+      }
+
       if (response.success && response.data) {
         setUser(response.data);
-      } else {
+      } else if (response.authFailed) {
+        // Only a 401 means the token is genuinely invalid — clear it.
         apiClient.logout();
       }
+      // Otherwise keep the token: the next page load retries and recovers,
+      // instead of silently logging the user out on a dropped request.
     }
     setIsLoading(false);
   };

@@ -20,6 +20,7 @@ export const ALL_PERMISSION_KEYS = [
   'FLAG_TRANSACTION',
   'SYNC_TRANSACTIONS',
   'REPRINT_RECEIPT',
+  'IMPORT_TRANSACTIONS',
   // Senders & Receivers
   'CREATE_SENDERS',
   'VIEW_SENDERS',
@@ -62,6 +63,7 @@ export const PERMISSION_CATEGORIES = {
     'FLAG_TRANSACTION',
     'SYNC_TRANSACTIONS',
     'REPRINT_RECEIPT',
+    'IMPORT_TRANSACTIONS',
   ],
   'Senders & Receivers': [
     'CREATE_SENDERS',
@@ -105,6 +107,7 @@ export const PERMISSION_INFO: Record<string, { label: string; description: strin
   FLAG_TRANSACTION: { label: 'Flag Transactions', description: 'Hold or restore receiving-side transactions with issues' },
   SYNC_TRANSACTIONS: { label: 'Sync Transactions', description: 'Trigger end-of-day sync to receiving' },
   REPRINT_RECEIPT: { label: 'Reprint Receipt', description: 'Print receipts for existing transactions' },
+  IMPORT_TRANSACTIONS: { label: 'Import Day-Sheet', description: 'Upload the sending side Excel day-sheet and post it as synced transactions' },
   CREATE_SENDERS: { label: 'Create Senders', description: 'Add new sender profiles' },
   VIEW_SENDERS: { label: 'View Senders', description: 'View sender information' },
   EDIT_SENDERS: { label: 'Edit Senders', description: 'Modify sender profiles' },
@@ -133,6 +136,7 @@ export type PermissionKey = (typeof ALL_PERMISSION_KEYS)[number];
 export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
   SUPER_ADMIN: [],
   RECEIVING_ADMIN: [
+    'IMPORT_TRANSACTIONS',
     'MARK_PAID',
     'MANAGE_TELLER_TILL',
     'APPROVE_RECONCILIATION',
@@ -179,6 +183,7 @@ export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
     'MANAGE_CASH',
   ],
   ADMIN: [
+    'IMPORT_TRANSACTIONS',
     'MANAGE_USERS',
     'MANAGE_EXCHANGE_RATES',
     'EDIT_EXCHANGE_RATE',
@@ -209,6 +214,7 @@ export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
     'MANAGE_CASH',
   ],
   MANAGER: [
+    'IMPORT_TRANSACTIONS',
     'SYNC_TRANSACTIONS',
     'VIEW_ALL_TRANSACTIONS',
     'VIEW_REPORTS',

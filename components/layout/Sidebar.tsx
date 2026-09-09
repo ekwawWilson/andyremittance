@@ -132,6 +132,7 @@ export const sendingNav: NavItem[] = [
 export const receivingNav: NavItem[] = [
   { name: 'Dashboard',             href: '/receiving',                        icon: icons.dashboard   },
   { name: 'Pending Payments',      href: '/receiving/pending',                icon: icons.document    },
+  { name: 'Import Day-Sheet',      href: '/receiving/import',                 icon: icons.sync        },
   { name: 'Disbursements',         href: '/receiving/disbursements',          icon: icons.money       },
   { name: 'Sub-payment Report',    href: '/receiving/sub-payment-report',     icon: icons.chart       },
   { name: 'Additional Till',       href: '/receiving/additional-till-report', icon: icons.ledger      },
