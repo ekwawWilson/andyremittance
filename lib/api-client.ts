@@ -5,6 +5,12 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  /**
+   * True only when the server actively rejected the credentials (401).
+   * Callers must not treat a network error, timeout or navigation-aborted fetch
+   * as an invalid session — doing so destroys a perfectly good token.
+   */
+  authFailed?: boolean;
 }
 
 class ApiClient {
@@ -54,7 +60,7 @@ class ApiClient {
       // Token expired or revoked — clear local session immediately
       if (response.status === 401) {
         this.setToken(null);
-        return { success: false, error: 'Session expired. Please sign in again.' };
+        return { success: false, error: 'Session expired. Please sign in again.', authFailed: true };
       }
 
       const data = await response.json();
@@ -813,6 +819,97 @@ class ApiClient {
       '/api/sending/cash-management',
       { method: 'POST', body: JSON.stringify({ type: 'OPERATING_EXPENSE', ...data }) }
     );
+  }
+
+  // ─── Excel day-sheet import ────────────────────────────────────────────────
+
+  /**
+   * Upload a sending-side day-sheet for parsing. Nothing is written — the response
+   * is a per-sheet preview with every row classified and validated.
+   *
+   * Uses fetch directly rather than this.request(): a multipart upload must let the
+   * browser set its own Content-Type boundary, and parsing a large sheet can take
+   * longer than the shared 30 s abort.
+   */
+  async previewImport(file: File) {
+    const token = this.getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/import/preview`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+        signal: controller.signal,
+      });
+
+      if (response.status === 401) {
+        this.setToken(null);
+        return { success: false as const, error: 'Session expired. Please sign in again.', authFailed: true };
+      }
+
+      return (await response.json()) as ApiResponse<ImportPreview>;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { success: false as const, error: 'Upload timed out. Try a smaller file.' };
+      }
+      return {
+        success: false as const,
+        error: error instanceof Error ? error.message : 'Upload failed',
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /** Commit the reviewed rows. Creates senders/receivers/transactions and funds the branch payable. */
+  async commitImport(payload: {
+    receivingPointId: string;
+    transactionDate: string;
+    rate: number;
+    rows: ImportCommitRow[];
+    fileName: string;
+    fileHash: string;
+    sheetName: string;
+    confirmReimport?: boolean;
+  }) {
+    const token = this.getToken();
+    const controller = new AbortController();
+    // A full sheet writes many rows inside one database transaction.
+    const timeoutId = setTimeout(() => controller.abort(), 180_000);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/import/commit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (response.status === 401) {
+        this.setToken(null);
+        return { success: false as const, error: 'Session expired. Please sign in again.', authFailed: true };
+      }
+
+      return (await response.json()) as ApiResponse<ImportResult>;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { success: false as const, error: 'Import timed out. Check the transaction list before retrying.' };
+      }
+      return {
+        success: false as const,
+        error: error instanceof Error ? error.message : 'Import failed',
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -1596,4 +1693,93 @@ export interface CashManagementEntry {
     description: string | null;
     account: { accountCode: string; accountName: string };
   }>;
+}
+
+// ─── Excel day-sheet import ──────────────────────────────────────────────────
+
+export type ImportReceivingMode = 'CASH' | 'BANK' | 'MOMO';
+
+export interface ImportIssue {
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+}
+
+export interface ImportRow {
+  excelRow: number;
+  lineNo: number | null;
+  senderName: string;
+  receiverName: string;
+  cadAmount: number;
+  ghsAmount: number;
+  usdAmount: number | null;
+  rate: number | null;
+  receivingMode: ImportReceivingMode;
+  momoNumber: string | null;
+  momoNumberRaw: string | null;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  bankDetailRow: number | null;
+  note: string | null;
+  issues: ImportIssue[];
+  include: boolean;
+}
+
+export interface ImportSheet {
+  sheetName: string;
+  branchCode: string | null;
+  title: string;
+  transactionDate: string | null;
+  dominantRate: number | null;
+  rows: ImportRow[];
+  computedTotals: { cad: number; ghs: number; count: number };
+  declaredTotals: { cad: number | null; ghs: number | null } | null;
+  issues: ImportIssue[];
+  receivingPointId: string | null;
+  receivingPointName: string | null;
+  /** The branch's current business date — tellers' pending list defaults to it. */
+  branchServerDate: string | null;
+  existingRate: number | null;
+  summary: {
+    total: number;
+    importable: number;
+    errors: number;
+    warnings: number;
+    alreadyImported: number;
+    byMode: Record<ImportReceivingMode, number>;
+  };
+}
+
+export interface ImportPreview {
+  fileName: string;
+  fileHash: string;
+  sheets: ImportSheet[];
+  issues: ImportIssue[];
+  priorImport: { importedAt: string; importedBy: string | null; details: unknown } | null;
+  receivingPoints: Array<{ id: string; code: string; name: string }>;
+}
+
+export interface ImportCommitRow {
+  excelRow: number;
+  senderName: string;
+  receiverName: string;
+  cadAmount: number;
+  ghsAmount: number;
+  receivingMode: ImportReceivingMode;
+  momoNumber?: string | null;
+  bankName?: string | null;
+  bankAccountNo?: string | null;
+  note?: string | null;
+}
+
+export interface ImportResult {
+  batchId: string;
+  created: number;
+  sendersCreated: number;
+  receiversCreated: number;
+  totalCad: number;
+  totalGhs: number;
+  transactionDate: string;
+  rateUsed: number;
+  transactions: Array<{ excelRow: number; transactionCode: string; id: string }>;
 }
