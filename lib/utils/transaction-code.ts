@@ -1,7 +1,10 @@
 const DAY_PREFIXES = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
+// Business dates are stored as UTC midnight (@db.Date), so the code must be derived
+// with the UTC getters.  Using local-time getters shifts the code back a day on any
+// server west of UTC — a Toronto server would stamp Monday's sheet with Sunday's code.
 function getTransactionDayPrefix(date: Date): string {
-  return DAY_PREFIXES[date.getDay()] ?? 'X';
+  return DAY_PREFIXES[date.getUTCDay()] ?? 'X';
 }
 
 export function generateShortTransactionCode(date: Date, entropy?: string): string {
@@ -25,8 +28,8 @@ export function generateTransactionCode(
   type: 'STANDARD' | 'ADDITIONAL' = 'STANDARD',
   shortCode?: string
 ): string {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const suffix = shortCode ?? generateShortTransactionCode(date);
 
   const code = `A${day}${month}-${suffix}`;
@@ -55,8 +58,8 @@ export function transactionCodeTemplate(
   date: Date,
   type: 'STANDARD' | 'ADDITIONAL' = 'STANDARD'
 ): string {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const code = `A${day}${month}-${getTransactionDayPrefix(date)}000`;
   return type === 'ADDITIONAL' ? `ADDITIONAL-${code}` : code;
 }
