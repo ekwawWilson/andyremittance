@@ -50,8 +50,9 @@ export async function POST(
         receivingPointId: string | null;
         fromAccountId: string;
         toAccountId: string;
+        requestedById: string;
       }>>`
-        SELECT id, status, amount, notes, "receivingPointId", "fromAccountId", "toAccountId"
+        SELECT id, status, amount, notes, "receivingPointId", "fromAccountId", "toAccountId", "requestedById"
         FROM "CashTransferRequest"
         WHERE id = ${id}
         FOR UPDATE
@@ -60,6 +61,14 @@ export async function POST(
       const req = locked[0];
       if (!req) throw new Error('Transfer request not found');
       if (req.status !== 'PENDING') throw new Error(`Request is already ${req.status.toLowerCase()}`);
+
+      // Branch admins hold both the requesting and approving permissions, so
+      // without this one person could move vault cash into their own till
+      // unwitnessed. Moving cash to your own till legitimately has its own
+      // endpoint (vault-to-self-till), which is audited as exactly that.
+      if (req.requestedById === userId) {
+        throw new Error('A transfer request must be approved by someone other than the person who raised it.');
+      }
 
       if (receivingPointId && req.receivingPointId && req.receivingPointId !== receivingPointId) {
         throw new Error('Not authorised to approve requests from another branch');
@@ -143,7 +152,7 @@ export async function POST(
     console.error('Approve transfer error:', error);
     const message = error instanceof Error ? error.message : 'Failed to approve transfer';
     // Propagate branch-scope and already-processed errors as 400/403 rather than 500
-    const status = message.includes('Not authorised') ? 403
+    const status = message.includes('Not authorised') || message.includes('other than the person') ? 403
       : message.includes('already') || message.includes('not found') || message.includes('Insufficient') || message.includes('no funds') ? 400
       : 500;
     return errorResponse(message, status);

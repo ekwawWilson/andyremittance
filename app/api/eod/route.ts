@@ -54,7 +54,20 @@ export async function POST(request: NextRequest) {
 
     // Run the sync — atomically marks transactions SYNCED, funds vaults,
     // and stamps the EOD record ID on each transaction in a single DB transaction.
-    const syncResult = await syncService.endOfDaySync(businessDate, eodRecord.id);
+    //
+    // The record has to exist first so the sync can stamp its ID, but if the sync
+    // then fails the record must not survive: the "already closed" guard above
+    // would refuse every retry for this date while the transactions sat unsynced,
+    // and only a manual database edit could clear it.
+    let syncResult: Awaited<ReturnType<typeof syncService.endOfDaySync>>;
+    try {
+      syncResult = await syncService.endOfDaySync(businessDate, eodRecord.id);
+    } catch (syncError) {
+      await prisma.endOfDayRecord.delete({ where: { id: eodRecord.id } }).catch(() => {
+        console.error('Could not roll back EOD record', eodRecord.id, '— clear it before retrying.');
+      });
+      throw syncError;
+    }
 
     // Update synced count + advance sending server date to next business day
     const nextBusinessDate = new Date(businessDate);

@@ -91,7 +91,26 @@ async function deriveTellerLedgerFigures(
     ],
   });
 
-  const openingBalance = Number(lastResolvedRecon?.actualClosing ?? 0);
+  // The previous signed-off closing balance is the authoritative opening. When a
+  // teller has never reconciled there is none — falling back to zero would show
+  // the whole till as a variance on their first submission, so derive the true
+  // opening from everything that moved through the till before today.
+  let openingBalance: number;
+  if (lastResolvedRecon) {
+    openingBalance = Number(lastResolvedRecon.actualClosing);
+  } else {
+    const priorEntries = await prisma.ledgerEntry.findMany({
+      where: {
+        OR: [{ debitAccountId: till.id }, { creditAccountId: till.id }],
+        entryDate: { lt: businessDate },
+      },
+      select: { amount: true, debitAccountId: true },
+    });
+    openingBalance = priorEntries.reduce(
+      (sum, e) => sum + (e.debitAccountId === till.id ? Number(e.amount) : -Number(e.amount)),
+      0
+    );
+  }
 
   let transfersIn = 0;
   let paymentsMade = 0;
@@ -105,7 +124,10 @@ async function deriveTellerLedgerFigures(
     netMovement += isDebit ? amount : -amount;
 
     if (entry.entryType === 'DISBURSEMENT') {
-      paymentsMade += amount;
+      // A disbursement credits the till; an approved reversal debits it back.
+      // Adding both as payments reported a teller who paid GHS 840 and had it
+      // reversed as having paid GHS 1,680.
+      paymentsMade += isDebit ? -amount : amount;
     } else if (entry.entryType === 'TRANSFER') {
       if (isDebit) transfersIn += amount;
       else returnsToVault += amount;

@@ -137,26 +137,32 @@ export async function POST(request: NextRequest) {
       _count: true,
     });
 
-    // Advance receiving branch server date to next business day
-    await prisma.receivingPoint.update({
-      where: { id: receivingPointId },
-      data: { serverDate: nextDay },
-    });
+    // Advancing the business date and writing the record must happen together.
+    // Done separately, a failure between them left the branch on the next day
+    // with no record of closing — and because the "already closed" guard keys on
+    // (branch, date), the day could then be closed again and the date advanced twice.
+    const eodRecord = await prisma.$transaction(async (tx) => {
+      const record = await tx.receivingEodRecord.create({
+        data: {
+          receivingPointId,
+          date: businessDate,
+          closedById: userId,
+          totalDisbursed: disbursementStats._sum.ghsAmount ?? 0,
+          disbursementCount: disbursementStats._count,
+          notes,
+        },
+        include: {
+          closedBy: { select: { firstName: true, lastName: true } },
+          receivingPoint: { select: { name: true, code: true } },
+        },
+      });
 
-    // Create the receiving EOD record
-    const eodRecord = await prisma.receivingEodRecord.create({
-      data: {
-        receivingPointId,
-        date: businessDate,
-        closedById: userId,
-        totalDisbursed: disbursementStats._sum.ghsAmount ?? 0,
-        disbursementCount: disbursementStats._count,
-        notes,
-      },
-      include: {
-        closedBy: { select: { firstName: true, lastName: true } },
-        receivingPoint: { select: { name: true, code: true } },
-      },
+      await tx.receivingPoint.update({
+        where: { id: receivingPointId },
+        data: { serverDate: nextDay },
+      });
+
+      return record;
     });
 
     await prisma.auditLog.create({
