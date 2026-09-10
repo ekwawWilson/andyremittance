@@ -111,9 +111,13 @@ export default function ReconciliationPage() {
   const cashInflows = ledgerStatement
     .filter((entry) => entry.entryType === 'TRANSFER' && entry.isDebit)
     .reduce((sum, entry) => sum + Number(entry.amount), 0);
+  // A disbursement credits the till; an approved reversal debits it back. Adding
+  // both regardless of direction reported a teller who paid GHS 840 and had it
+  // reversed as having paid GHS 1,680 — and, because expected closing subtracts
+  // this figure, invented a variance of the same size.
   const paymentsMade = ledgerStatement
     .filter((entry) => entry.entryType === 'DISBURSEMENT')
-    .reduce((sum, entry) => sum + Number(entry.amount), 0);
+    .reduce((sum, entry) => sum + (entry.isDebit ? -Number(entry.amount) : Number(entry.amount)), 0);
   const returnsToVault = ledgerStatement
     .filter((entry) => entry.entryType === 'TRANSFER' && !entry.isDebit)
     .reduce((sum, entry) => sum + Number(entry.amount), 0);

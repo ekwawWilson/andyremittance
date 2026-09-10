@@ -278,7 +278,9 @@ export default function TillPage() {
 
   const totalIn      = statement.filter((e) => e.isDebit).reduce((s, e) => s + Number(e.amount), 0);
   const disbursements = statement.filter((e) => e.entryType === 'DISBURSEMENT');
-  const disbursed    = disbursements.reduce((s, e) => s + Number(e.amount), 0);
+  // Net of reversals: a payout credits the till, an approved reversal debits it
+  // back, so adding both would report twice what actually went out.
+  const disbursed    = disbursements.reduce((s, e) => s + (e.isDebit ? -Number(e.amount) : Number(e.amount)), 0);
   const returns      = statement.filter((e) => e.entryType === 'TRANSFER' && !e.isDebit).reduce((s, e) => s + Number(e.amount), 0);
 
   const isLowFloat      = !isHistorical && balance > 0 && balance < 500;
