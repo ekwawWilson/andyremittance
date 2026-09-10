@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { successResponse, errorResponse } from '@/lib/utils/api-response';
 import { getScopedReceivingPointId, requirePermission } from '@/lib/auth/permissions';
 import prisma from '@/lib/db/prisma';
+import { tillsNotZero } from '@/lib/services/till-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,17 +112,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Block EOD if any teller still has funds in their till, unless force-closing.
-    // Force-close acknowledges that the admin accepts the discrepancy risk.
-    const tellersWithFunds = tellers.filter(
-      (teller) => Number(teller.tellerLedger[0]?.balance ?? 0) > 0
-    );
-    if (tellersWithFunds.length > 0 && !forceClose) {
-      const names = tellersWithFunds
-        .map((t) => `${t.firstName} ${t.lastName} (GHS ${Number(t.tellerLedger[0]?.balance ?? 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })})`)
+    // Every till must read exactly zero before the day closes, unless force-closing.
+    // Checking `!== 0` rather than `> 0` matters: a negative till means more went
+    // out than the drawer ever held, and closing on it carries the error into
+    // tomorrow's opening balance where it is far harder to trace.
+    const unclearedTills = tillsNotZero(tellers);
+    if (unclearedTills.length > 0 && !forceClose) {
+      const names = unclearedTills
+        .map(({ teller, balance }) =>
+          `${teller.firstName} ${teller.lastName} (GHS ${balance.toLocaleString('en-GH', { minimumFractionDigits: 2 })})`)
         .join(', ');
+      const anyNegative = unclearedTills.some(({ balance }) => balance < 0);
       return errorResponse(
-        `${tellersWithFunds.length} teller(s) still have funds in their till: ${names}. Return cash to the vault, or force-close to override.`,
+        `${unclearedTills.length} teller till(s) are not zero: ${names}. ` +
+        (anyNegative
+          ? 'A negative till means more was disbursed than the drawer held — investigate before closing. '
+          : 'Return the cash to the vault, ') +
+        'or force-close to override.',
         400
       );
     }

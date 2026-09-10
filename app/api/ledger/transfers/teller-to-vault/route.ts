@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { successResponse, errorResponse } from '@/lib/utils/api-response';
 import { requirePermission } from '@/lib/auth/permissions';
 import prisma from '@/lib/db/prisma';
+import { blockUnreconciledVaultReturn } from '@/lib/services/till-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,8 @@ const transferSchema = z.object({
   vaultId: z.string().uuid(),
   amount: z.number().positive(),
   notes: z.string().optional(),
+  /** Supervisor override for the reconcile-first rule. Recorded on the request. */
+  force: z.boolean().optional(),
 });
 
 // POST /api/ledger/transfers/teller-to-vault
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { vaultId, amount, notes } = transferSchema.parse(body);
+    const { vaultId, amount, notes, force } = transferSchema.parse(body);
 
     // Verify destination vault
     const vault = await prisma.ledgerAccount.findUnique({ where: { id: vaultId } });
@@ -60,6 +63,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Reconcile before the cash leaves. Counting a drawer that has already been
+    // emptied is not a control: expected and counted are both zero, so the
+    // variance is zero whatever actually happened.
+    if (!force && receivingPointId) {
+      const blocked = await blockUnreconciledVaultReturn(userId, receivingPointId);
+      if (blocked) return errorResponse(blocked, 400);
+    }
+
     // Soft balance check — admin will do the hard check at approval time,
     // but warn early if the teller clearly doesn't have enough.
     if (Number(tellerTill.balance) < amount) {
@@ -75,7 +86,7 @@ export async function POST(request: NextRequest) {
         fromAccountId: tellerTill.id,
         toAccountId: vaultId,
         amount,
-        notes,
+        notes: force ? `${notes ?? ''} [reconcile-first override]`.trim() : notes,
         requestedById: userId,
         receivingPointId,
       },
