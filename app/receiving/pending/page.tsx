@@ -11,6 +11,41 @@ import { printReceipt, printMultiReceiverReceipt } from '@/lib/print-receipt';
 import { exportToExcel, exportToPDF, SummaryItem } from '@/lib/utils/export';
 import { fmtGHS, fmtNum } from '@/lib/utils/format';
 
+/**
+ * Where the money is actually going.  Rendered under the Mode badge on desktop
+ * and inside the card on mobile — the mobile view previously showed only the
+ * badge, so tellers on a phone could not see the bank or MoMo details at all.
+ */
+function PayoutDetails({ t, compact = false }: { t: Transaction; compact?: boolean }) {
+  const size = compact ? 'text-[11px]' : 'text-[11px]';
+  if (t.receivingMode === 'BANK') {
+    return (
+      <div className={`mt-1.5 ${size} text-blue-700 space-y-0.5`}>
+        <p className="font-medium">{t.bankName || '—'}</p>
+        <p className="font-mono">{t.bankAccountNo || '—'}</p>
+        {t.bankAccountName && <p>{t.bankAccountName}</p>}
+      </div>
+    );
+  }
+  if (t.receivingMode === 'MOMO') {
+    return (
+      <div className={`mt-1.5 ${size} text-purple-700 space-y-0.5`}>
+        <p className="font-mono">{t.momoNumber || '—'}</p>
+        {t.momoName && <p>{t.momoName}</p>}
+      </div>
+    );
+  }
+  if (t.receivingMode === 'CASH' && (t.cashGhanaCardNumber || t.cashPhoneNumber)) {
+    return (
+      <div className={`mt-1.5 ${size} text-green-700 space-y-0.5`}>
+        {t.cashGhanaCardNumber && <p>Ghana Card: {t.cashGhanaCardNumber}</p>}
+        {t.cashPhoneNumber && <p className="font-mono">{t.cashPhoneNumber}</p>}
+      </div>
+    );
+  }
+  return null;
+}
+
 /** Return a human-readable age string for a transaction waiting to be paid */
 function txAge(createdAt: string): { label: string; urgent: boolean } {
   const diff = Date.now() - new Date(createdAt).getTime();
@@ -102,18 +137,50 @@ function getSharedValue(values: string[]): string | null {
   return unique.length === 1 ? unique[0] : null;
 }
 
-const pendingExportHeaders = [
-  'Code',
-  'Sender',
-  'Receiver',
-  'GHS Amount',
-  'Mode',
-  'Bank Name',
-  'Account No.',
-  'Account Name',
-  'MoMo Number',
-  'MoMo Name',
-];
+/**
+ * The columns this page can show and export.
+ *
+ * One registry drives the table, the export headers and the export rows, so a
+ * column hidden in the picker is genuinely absent from the PDF and the workbook
+ * rather than blanked out.  `table: false` marks a column that only exists in
+ * the export (the table folds the payout details into the Mode cell).
+ */
+const PENDING_COLUMNS = [
+  { key: 'code',            label: 'Code',       table: true  },
+  { key: 'receiver',        label: 'Receiver',   table: true  },
+  { key: 'sender',          label: 'Sender',     table: true  },
+  { key: 'amount',          label: 'GHS Amount', table: true  },
+  { key: 'mode',            label: 'Mode',       table: true  },
+  { key: 'bankName',        label: 'Bank Name',       table: false },
+  { key: 'bankAccountNo',   label: 'Account No.',     table: false },
+  { key: 'bankAccountName', label: 'Account Name',    table: false },
+  { key: 'momoNumber',      label: 'MoMo Number',     table: false },
+  { key: 'momoName',        label: 'MoMo Name',       table: false },
+  { key: 'age',             label: 'Age',        table: true  },
+] as const;
+
+type PendingColKey = (typeof PENDING_COLUMNS)[number]['key'];
+
+const ALL_COL_KEYS = PENDING_COLUMNS.map((c) => c.key) as PendingColKey[];
+const COL_PREFS_KEY = 'pending.visibleColumns';
+
+/** Column value for one transaction, keyed the same way as PENDING_COLUMNS. */
+function pendingCellValue(t: Transaction, key: PendingColKey): string {
+  const row = buildPendingExportRow(t);
+  switch (key) {
+    case 'code':            return row.code;
+    case 'sender':          return row.sender;
+    case 'receiver':        return row.receiver;
+    case 'amount':          return fmtNum(row.amount);
+    case 'mode':            return row.mode;
+    case 'bankName':        return row.bankName || '';
+    case 'bankAccountNo':   return row.bankAccountNo || '';
+    case 'bankAccountName': return row.bankAccountName || '';
+    case 'momoNumber':      return row.momoNumber || '';
+    case 'momoName':        return row.momoName || '';
+    case 'age':             return txAge(t.createdAt).label;
+  }
+}
 
 function buildPendingExportRow(t: Transaction) {
   const latest = latestSubPayment(t);
@@ -177,6 +244,38 @@ export default function PendingPaymentsPage() {
   const { latestDate, loading: latestLoading } = useLatestTransactionDate(serverDate, {
     status: 'SYNCED,PARTIAL_PAYMENT',
   });
+
+  // Column visibility — drives the table and both exports. Remembered per
+  // browser so a teller's choice survives a reload.
+  const [visibleCols, setVisibleCols] = useState<Set<PendingColKey>>(new Set(ALL_COL_KEYS));
+  const [colMenuOpen, setColMenuOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COL_PREFS_KEY);
+      if (!saved) return;
+      const keys = (JSON.parse(saved) as string[]).filter((k): k is PendingColKey =>
+        (ALL_COL_KEYS as string[]).includes(k)
+      );
+      if (keys.length) setVisibleCols(new Set(keys));
+    } catch { /* corrupt or unavailable storage — keep every column */ }
+  }, []);
+
+  const persistCols = (next: Set<PendingColKey>) => {
+    setVisibleCols(next);
+    try { localStorage.setItem(COL_PREFS_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+  };
+
+  const toggleCol = (key: PendingColKey) => {
+    const next = new Set(visibleCols);
+    // Never let the last column be hidden — an empty export is not useful.
+    if (next.has(key)) { if (next.size === 1) return; next.delete(key); }
+    else next.add(key);
+    persistCols(next);
+  };
+
+  const showCol = (key: PendingColKey) => visibleCols.has(key);
+  const exportCols = PENDING_COLUMNS.filter((c) => visibleCols.has(c.key));
   const isTeller = user?.role === 'TELLER';
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -507,25 +606,16 @@ export default function PendingPaymentsPage() {
 
   const handleExportPdf = () => {
     const summary = buildPendingExportSummary(filtered);
-    const rows = filtered.map((t) => {
-      const row = buildPendingExportRow(t);
-      return [
-        row.code,
-        row.sender,
-        row.receiver,
-        fmtGHS(row.amount),
-        row.mode,
-        row.bankName || '—',
-        row.bankAccountNo || '—',
-        row.bankAccountName || '—',
-        row.momoNumber || '—',
-        row.momoName || '—',
-      ];
-    });
+    // Only the columns left visible in the picker reach the file.
+    const rows = filtered.map((t) =>
+      exportCols.map((c) =>
+        c.key === 'amount' ? fmtGHS(buildPendingExportRow(t).amount) : (pendingCellValue(t, c.key) || '—')
+      )
+    );
 
     exportToPDF(
       'Pending Payments',
-      pendingExportHeaders,
+      exportCols.map((c) => c.label),
       rows,
       `Period: ${dateFrom}${dateTo !== dateFrom ? ` to ${dateTo}` : ''}`,
       summary
@@ -534,25 +624,11 @@ export default function PendingPaymentsPage() {
 
   const handleExportExcel = async () => {
     const summary = buildPendingExportSummary(filtered);
-    const rows = filtered.map((t) => {
-      const row = buildPendingExportRow(t);
-      return [
-        row.code,
-        row.sender,
-        row.receiver,
-        fmtNum(row.amount),
-        row.mode,
-        row.bankName,
-        row.bankAccountNo,
-        row.bankAccountName,
-        row.momoNumber,
-        row.momoName,
-      ];
-    });
+    const rows = filtered.map((t) => exportCols.map((c) => pendingCellValue(t, c.key)));
 
     await exportToExcel(
       'Pending Payments',
-      pendingExportHeaders,
+      exportCols.map((c) => c.label),
       rows,
       `pending-payments-${dateFrom}${dateTo !== dateFrom ? `-to-${dateTo}` : ''}`,
       summary
@@ -638,6 +714,53 @@ export default function PendingPaymentsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Column picker — what is unticked here is absent from the exports too */}
+          <div className="relative">
+            <Button variant="secondary" onClick={() => setColMenuOpen((o) => !o)}>
+              <svg className="w-4 h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span className="hidden sm:inline">Columns</span>
+              {visibleCols.size < ALL_COL_KEYS.length && (
+                <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                  {visibleCols.size}/{ALL_COL_KEYS.length}
+                </span>
+              )}
+            </Button>
+
+            {colMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setColMenuOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                  <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-gray-100">
+                    <span className="text-xs font-semibold text-gray-500">Show columns</span>
+                    <button
+                      onClick={() => persistCols(new Set(ALL_COL_KEYS))}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  {PENDING_COLUMNS.map((c) => (
+                    <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.has(c.key)}
+                        onChange={() => toggleCol(c.key)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{c.label}</span>
+                      {!c.table && <span className="ml-auto text-[10px] text-gray-400">export</span>}
+                    </label>
+                  ))}
+                  <p className="px-2 pt-2 mt-1 border-t border-gray-100 text-[11px] leading-snug text-gray-400">
+                    Unticked columns are left out of the PDF and Excel exports.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
           <Button variant="secondary" onClick={handleExportPdf} disabled={filtered.length === 0}>
             <svg className="w-4 h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -931,6 +1054,8 @@ export default function PendingPaymentsPage() {
                                   </p>
                                 )}
                                 <p className="text-xs text-gray-400">From: {t.sender?.firstName} {t.sender?.lastName}</p>
+                                {/* Where the money goes — bank / MoMo / cash ID */}
+                                <PayoutDetails t={t} compact />
                                 {/* Amount */}
                                 <div className="flex items-center justify-between mt-1.5">
                                   <div>
@@ -998,12 +1123,12 @@ export default function PendingPaymentsPage() {
                                 />
                               </th>
                             )}
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Code</th>
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Receiver</th>
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sender</th>
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">GHS Amount</th>
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Mode</th>
-                            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Age</th>
+                            {showCol('code')     && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Code</th>}
+                            {showCol('receiver') && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Receiver</th>}
+                            {showCol('sender')   && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sender</th>}
+                            {showCol('amount')   && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">GHS Amount</th>}
+                            {showCol('mode')     && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Mode</th>}
+                            {showCol('age')      && <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Age</th>}
                             <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Actions</th>
                           </tr>
                         </thead>
@@ -1020,9 +1145,12 @@ export default function PendingPaymentsPage() {
                                   )}
                                 </td>
                               )}
+                              {showCol('code') && (
                               <td className="py-4 px-4">
                                 <span className="font-mono font-bold text-blue-600 text-xs">{t.transactionCode}</span>
                               </td>
+                              )}
+                              {showCol('receiver') && (
                               <td className="py-4 px-4">
                                 {t.receiversDeferred ? (
                                   <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-violet-100 text-violet-700">
@@ -1046,7 +1174,11 @@ export default function PendingPaymentsPage() {
                                   </>
                                 )}
                               </td>
+                              )}
+                              {showCol('sender') && (
                               <td className="py-4 px-4 text-gray-500 text-sm">{t.sender?.firstName} {t.sender?.lastName}</td>
+                              )}
+                              {showCol('amount') && (
                               <td className="py-4 px-4">
                                 <span className="font-bold text-emerald-700 text-base">{fmtGHS(Number(t.ghsAmount))}</span>
                                 {t.status === 'PARTIAL_PAYMENT' && (
@@ -1055,24 +1187,16 @@ export default function PendingPaymentsPage() {
                                   </p>
                                 )}
                               </td>
+                              )}
+                              {showCol('mode') && (
                               <td className="py-4 px-4">
                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${t.receivingMode === 'CASH' ? 'bg-green-100 text-green-700' : t.receivingMode === 'BANK' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                                   {t.receivingMode}
                                 </span>
-                                {t.receivingMode === 'BANK' && (
-                                  <div className="mt-1.5 text-[11px] text-blue-700 space-y-0.5">
-                                    <p>{t.bankName || '—'}</p>
-                                    <p>{t.bankAccountNo || '—'}</p>
-                                    <p>{t.bankAccountName || '—'}</p>
-                                  </div>
-                                )}
-                                {t.receivingMode === 'CASH' && t.cashGhanaCardNumber && (
-                                  <div className="mt-1.5 text-[11px] text-green-700 space-y-0.5">
-                                    <p>Ghana Card: {t.cashGhanaCardNumber}</p>
-                                    <p>Phone: {t.cashPhoneNumber || '—'}</p>
-                                  </div>
-                                )}
+                                <PayoutDetails t={t} />
                               </td>
+                              )}
+                              {showCol('age') && (
                               <td className="py-4 px-4">
                                 {(() => {
                                   const age = txAge(t.createdAt);
@@ -1083,6 +1207,7 @@ export default function PendingPaymentsPage() {
                                   );
                                 })()}
                               </td>
+                              )}
                               <td className="py-4 px-4">
                                 {isTeller ? (
                                   <div className="flex gap-2 flex-wrap">
