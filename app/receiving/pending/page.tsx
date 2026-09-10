@@ -146,23 +146,56 @@ function getSharedValue(values: string[]): string | null {
  * the export (the table folds the payout details into the Mode cell).
  */
 const PENDING_COLUMNS = [
-  { key: 'code',            label: 'Code',       table: true  },
-  { key: 'receiver',        label: 'Receiver',   table: true  },
-  { key: 'sender',          label: 'Sender',     table: true  },
-  { key: 'amount',          label: 'GHS Amount', table: true  },
-  { key: 'mode',            label: 'Mode',       table: true  },
-  { key: 'bankName',        label: 'Bank Name',       table: false },
-  { key: 'bankAccountNo',   label: 'Account No.',     table: false },
-  { key: 'bankAccountName', label: 'Account Name',    table: false },
-  { key: 'momoNumber',      label: 'MoMo Number',     table: false },
-  { key: 'momoName',        label: 'MoMo Name',       table: false },
-  { key: 'age',             label: 'Age',        table: true  },
+  { key: 'code',            label: 'Code',       table: true,  defaultOn: true  },
+  { key: 'receiver',        label: 'Receiver',   table: true,  defaultOn: true  },
+  { key: 'sender',          label: 'Sender',     table: true,  defaultOn: true  },
+  { key: 'amount',          label: 'GHS Amount', table: true,  defaultOn: true  },
+  { key: 'mode',            label: 'Mode',       table: true,  defaultOn: true  },
+  { key: 'bankName',        label: 'Bank Name',           table: false, defaultOn: true  },
+  { key: 'bankAccountNo',   label: 'Account No.',         table: false, defaultOn: true  },
+  { key: 'bankAccountName', label: 'Account Name',        table: false, defaultOn: true  },
+  { key: 'momoNumber',      label: 'MoMo Number',         table: false, defaultOn: true  },
+  { key: 'momoName',        label: 'MoMo Name',           table: false, defaultOn: true  },
+  // Payout-sheet columns: off unless someone is producing the printed sheet.
+  { key: 'momoCommission',  label: 'MoMo Commission (1%)', table: false, defaultOn: false },
+  { key: 'amountToBePaid',  label: 'Amount to be Paid',    table: false, defaultOn: false },
+  { key: 'remark',          label: 'Remark',               table: false, defaultOn: false },
+  { key: 'age',             label: 'Age',        table: true,  defaultOn: true  },
 ] as const;
 
 type PendingColKey = (typeof PENDING_COLUMNS)[number]['key'];
 
 const ALL_COL_KEYS = PENDING_COLUMNS.map((c) => c.key) as PendingColKey[];
+/** What a fresh browser shows — the payout-sheet columns start hidden. */
+const DEFAULT_COL_KEYS = PENDING_COLUMNS.filter((c) => c.defaultOn).map((c) => c.key) as PendingColKey[];
 const COL_PREFS_KEY = 'pending.visibleColumns';
+
+/**
+ * The 1% deducted before the receiver is paid, floored to whole cedis.
+ *
+ * Matches the sending side's own sheet exactly, including the rounding: GHS
+ * 9,960 gives 99, not 100. Flooring the deduction means the receiver is never
+ * short-changed by a rounding decision.
+ */
+const COMMISSION_RATE = 0.01;
+
+/**
+ * Ghana pays whole cedis, so the sheet works off the floored amount. Uploaded
+ * transactions are already whole, but rows migrated from the old system still
+ * carry pesewas — without this the printed sheet would ask a teller to hand
+ * over GHS 1,422.40.
+ */
+function payoutBase(ghsAmount: number): number {
+  return Math.floor(ghsAmount);
+}
+
+function momoCommission(ghsAmount: number): number {
+  return Math.floor(payoutBase(ghsAmount) * COMMISSION_RATE);
+}
+
+function amountToBePaid(ghsAmount: number): number {
+  return payoutBase(ghsAmount) - momoCommission(ghsAmount);
+}
 
 /** Column value for one transaction, keyed the same way as PENDING_COLUMNS. */
 function pendingCellValue(t: Transaction, key: PendingColKey): string {
@@ -178,6 +211,10 @@ function pendingCellValue(t: Transaction, key: PendingColKey): string {
     case 'bankAccountName': return row.bankAccountName || '';
     case 'momoNumber':      return row.momoNumber || '';
     case 'momoName':        return row.momoName || '';
+    case 'momoCommission':  return String(momoCommission(row.amount));
+    case 'amountToBePaid':  return String(amountToBePaid(row.amount));
+    // Deliberately blank — a column to write in on the printed sheet.
+    case 'remark':          return '';
     case 'age':             return txAge(t.createdAt).label;
   }
 }
@@ -247,7 +284,7 @@ export default function PendingPaymentsPage() {
 
   // Column visibility — drives the table and both exports. Remembered per
   // browser so a teller's choice survives a reload.
-  const [visibleCols, setVisibleCols] = useState<Set<PendingColKey>>(new Set(ALL_COL_KEYS));
+  const [visibleCols, setVisibleCols] = useState<Set<PendingColKey>>(new Set(DEFAULT_COL_KEYS));
   const [colMenuOpen, setColMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -608,9 +645,12 @@ export default function PendingPaymentsPage() {
     const summary = buildPendingExportSummary(filtered);
     // Only the columns left visible in the picker reach the file.
     const rows = filtered.map((t) =>
-      exportCols.map((c) =>
-        c.key === 'amount' ? fmtGHS(buildPendingExportRow(t).amount) : (pendingCellValue(t, c.key) || '—')
-      )
+      exportCols.map((c) => {
+        if (c.key === 'amount') return fmtGHS(buildPendingExportRow(t).amount);
+        // Remark is meant to stay blank so it can be written in by hand.
+        if (c.key === 'remark') return '';
+        return pendingCellValue(t, c.key) || '—';
+      })
     );
 
     exportToPDF(
@@ -721,7 +761,7 @@ export default function PendingPaymentsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
               <span className="hidden sm:inline">Columns</span>
-              {visibleCols.size < ALL_COL_KEYS.length && (
+              {visibleCols.size !== DEFAULT_COL_KEYS.length && (
                 <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
                   {visibleCols.size}/{ALL_COL_KEYS.length}
                 </span>
@@ -735,7 +775,7 @@ export default function PendingPaymentsPage() {
                   <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-gray-100">
                     <span className="text-xs font-semibold text-gray-500">Show columns</span>
                     <button
-                      onClick={() => persistCols(new Set(ALL_COL_KEYS))}
+                      onClick={() => persistCols(new Set(DEFAULT_COL_KEYS))}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
                       Reset
