@@ -1711,7 +1711,10 @@ export interface ImportRow {
   senderName: string;
   receiverName: string;
   cadAmount: number;
+  /** GHS actually paid out — pesewas dropped. */
   ghsAmount: number;
+  /** GHS as written on the sheet, before the pesewas were dropped. */
+  ghsRaw: number;
   usdAmount: number | null;
   rate: number | null;
   receivingMode: ImportReceivingMode;
@@ -1732,7 +1735,7 @@ export interface ImportSheet {
   transactionDate: string | null;
   dominantRate: number | null;
   rows: ImportRow[];
-  computedTotals: { cad: number; ghs: number; count: number };
+  computedTotals: { cad: number; ghs: number; ghsRaw: number; count: number };
   declaredTotals: { cad: number | null; ghs: number | null } | null;
   issues: ImportIssue[];
   receivingPointId: string | null;

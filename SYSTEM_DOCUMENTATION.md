@@ -699,7 +699,7 @@ last       | | TOTAL | 19077 | 0 | 158339.1
 | **Mobile money** | A TO cell ending in 9–12 digits is `receivingMode = MOMO`. The leading text is the receiver name, the digits the momo number. |
 | **Leading zero** | Momo numbers are normalised to the 10-digit `0XXXXXXXXX` form — a 9-digit number (Excel strips the zero) gets one prepended; `+233…` is converted. |
 | **Cash payout** | Everything else. |
-| **Amounts** | `CAN` → CAD, first `GHC`/`GNC` → GHS, rounded to 2dp. Per-row rate is `GHS/CAD`; the most common value becomes the day's `ExchangeRate`. |
+| **Amounts** | `CAN` → CAD (2dp). First `GHC`/`GNC` → GHS, **floored to whole cedis** — pesewas are dropped, never rounded up, so a receiver is never owed more than the sheet authorised. The pre-floor figure is kept as `ghsRaw` and is what the sheet's TOTAL row is reconciled against. Per-row rate is `ghsRaw/CAD`; the most common value becomes the day's `ExchangeRate`. |
 | **TOTAL row** | Ends the table and is reconciled against the parsed rows — a mismatch is reported. |
 
 ### Validation

@@ -167,7 +167,9 @@ export class ExcelImportService {
       if (!tidyName(row.senderName)) throw new Error(`Row ${row.excelRow}: sender name is required.`);
       if (!tidyName(row.receiverName)) throw new Error(`Row ${row.excelRow}: receiver name is required.`);
       if (!(row.cadAmount > 0)) throw new Error(`Row ${row.excelRow}: CAD amount must be greater than zero.`);
-      if (!(row.ghsAmount > 0)) throw new Error(`Row ${row.excelRow}: GHS amount must be greater than zero.`);
+      if (!(Math.floor(row.ghsAmount) > 0)) {
+        throw new Error(`Row ${row.excelRow}: GHS amount must be at least one whole cedi.`);
+      }
       if (row.receivingMode === 'MOMO' && !row.momoNumber) {
         throw new Error(`Row ${row.excelRow}: a mobile money number is required for a MOMO payout.`);
       }
@@ -305,7 +307,9 @@ export class ExcelImportService {
       }
 
       const cadAmount = money(row.cadAmount);
-      const ghsAmount = money(row.ghsAmount);
+      // Ghana pays whole cedis. The parser already drops the pesewas, but enforce
+      // it here too so the rule holds whatever the client posts.
+      const ghsAmount = Math.floor(money(row.ghsAmount));
       const transactionId = randomUUID();
       const transactionCode = nextCode();
 

@@ -437,7 +437,7 @@ export default function ImportDaySheetPage() {
                     <span className="text-gray-500"> of {sheet.summary.total} rows</span>
                   </div>
                   <p className="mt-1 text-xs text-gray-400">
-                    CAD {fmt(selectedTotals.cad)} · GHS {fmt(selectedTotals.ghs)}
+                    CAD {fmt(selectedTotals.cad)} · GHS {selectedTotals.ghs.toLocaleString('en-US')}
                   </p>
                 </div>
               </div>
@@ -476,7 +476,10 @@ export default function ImportDaySheetPage() {
                     Sheet TOTAL: CAD {fmt(sheet.declaredTotals.cad ?? 0)} · GHS {fmt(sheet.declaredTotals.ghs)}
                   </span>
                   <span className="text-gray-500">
-                    Parsed: CAD {fmt(sheet.computedTotals.cad)} · GHS {fmt(sheet.computedTotals.ghs)}
+                    Parsed: CAD {fmt(sheet.computedTotals.cad)} · GHS {fmt(sheet.computedTotals.ghsRaw)}
+                  </span>
+                  <span className="text-gray-500">
+                    Payable after dropping pesewas: GHS {sheet.computedTotals.ghs.toLocaleString('en-US')}
                   </span>
                 </div>
               )}
@@ -622,7 +625,14 @@ export default function ImportDaySheetPage() {
                           </td>
 
                           <td className="px-3 py-2 text-right align-top tabular-nums">{fmt(row.cadAmount)}</td>
-                          <td className="px-3 py-2 text-right align-top tabular-nums font-medium">{fmt(row.ghsAmount)}</td>
+                          <td className="px-3 py-2 text-right align-top tabular-nums font-medium">
+                            {row.ghsAmount.toLocaleString('en-US')}
+                            {row.ghsRaw !== row.ghsAmount && (
+                              <span className="block text-xs font-normal text-gray-400">
+                                sheet {fmt(row.ghsRaw)}
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -680,9 +690,9 @@ export default function ImportDaySheetPage() {
 
             <dl className="grid grid-cols-2 gap-3 rounded-lg bg-gray-50 p-3 text-sm">
               <div><dt className="text-gray-500">Total CAD</dt><dd className="font-semibold">{fmt(selectedTotals.cad)}</dd></div>
-              <div><dt className="text-gray-500">Total GHS</dt><dd className="font-semibold">{fmt(selectedTotals.ghs)}</dd></div>
+              <div><dt className="text-gray-500">Total GHS</dt><dd className="font-semibold">{selectedTotals.ghs.toLocaleString('en-US')}</dd></div>
               <div><dt className="text-gray-500">Rate</dt><dd className="font-semibold">{sheet.existingRate ?? sheet.dominantRate ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Branch payable</dt><dd className="font-semibold">+GHS {fmt(selectedTotals.ghs)}</dd></div>
+              <div><dt className="text-gray-500">Branch payable</dt><dd className="font-semibold">+GHS {selectedTotals.ghs.toLocaleString('en-US')}</dd></div>
             </dl>
 
             <p className="text-xs text-gray-500">

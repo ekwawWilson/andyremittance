@@ -52,9 +52,12 @@ export interface ParsedRow {
   receiverName: string;
 
   cadAmount: number;
+  /** The GHS actually paid out — pesewas are dropped, never rounded up. */
   ghsAmount: number;
+  /** The GHS exactly as the sheet wrote it, before the pesewas were dropped. */
+  ghsRaw: number;
   usdAmount: number | null;
-  /** ghsAmount / cadAmount for this row, rounded to 4dp. */
+  /** ghsRaw / cadAmount for this row, rounded to 4dp. */
   rate: number | null;
 
   receivingMode: ParsedReceivingMode;
@@ -89,7 +92,7 @@ export interface ParsedSheet {
   dominantRate: number | null;
   rows: ParsedRow[];
   /** Totals computed from the rows we parsed. */
-  computedTotals: { cad: number; ghs: number; count: number };
+  computedTotals: { cad: number; ghs: number; ghsRaw: number; count: number };
   /** Totals as declared on the sheet's own TOTAL row, when present. */
   declaredTotals: { cad: number | null; ghs: number | null } | null;
   issues: ParsedIssue[];
@@ -361,7 +364,7 @@ function parseSheet(sheetName: string, rows: unknown[][]): ParsedSheet {
     return {
       sheetName, branchCode, title, transactionDate,
       dominantRate: null, rows: [],
-      computedTotals: { cad: 0, ghs: 0, count: 0 },
+      computedTotals: { cad: 0, ghs: 0, ghsRaw: 0, count: 0 },
       declaredTotals: null, issues: sheetIssues,
     };
   }
@@ -475,11 +478,19 @@ function parseSheet(sheetName: string, rows: unknown[][]): ParsedSheet {
     }
     if (ghs === null || ghs <= 0) {
       issues.push(issue('error', 'NO_GHS', `Row ${excelRow} has no GHS amount.`));
+    } else if (Math.floor(money(ghs)) <= 0) {
+      issues.push(issue('error', 'NO_GHS',
+        `Row ${excelRow} is GHS ${money(ghs).toFixed(2)}, which drops to zero once the pesewas are removed.`));
     }
 
     const cadAmount = money(cad ?? 0);
-    const ghsAmount = money(ghs ?? 0);
-    const rowRate = cadAmount > 0 && ghsAmount > 0 ? rate4(ghsAmount / cadAmount) : null;
+    // Ghana pays whole cedis — the pesewas on the sheet are dropped, not rounded,
+    // so the receiver is never handed more than the sheet authorised.
+    const ghsRaw = money(ghs ?? 0);
+    const ghsAmount = Math.floor(ghsRaw);
+    // Rate is derived from what the sheet wrote, so dropping pesewas cannot
+    // manufacture a drift warning on an otherwise correct row.
+    const rowRate = cadAmount > 0 && ghsRaw > 0 ? rate4(ghsRaw / cadAmount) : null;
 
     // Free-text marker in the trailing columns (NP, ETRANS, KEVIN TD …)
     let note: string | null = null;
@@ -495,6 +506,7 @@ function parseSheet(sheetName: string, rows: unknown[][]): ParsedSheet {
       receiverName,
       cadAmount,
       ghsAmount,
+      ghsRaw,
       usdAmount: usd !== null ? money(usd) : null,
       rate: rowRate,
       receivingMode,
@@ -542,9 +554,10 @@ function parseSheet(sheetName: string, rows: unknown[][]): ParsedSheet {
     (acc, row) => ({
       cad: money(acc.cad + row.cadAmount),
       ghs: money(acc.ghs + row.ghsAmount),
+      ghsRaw: money(acc.ghsRaw + row.ghsRaw),
       count: acc.count + 1,
     }),
-    { cad: 0, ghs: 0, count: 0 }
+    { cad: 0, ghs: 0, ghsRaw: 0, count: 0 }
   );
 
   // Reconcile against the sheet's own TOTAL row — catches rows we failed to read.
@@ -552,9 +565,11 @@ function parseSheet(sheetName: string, rows: unknown[][]): ParsedSheet {
     sheetIssues.push(issue('warning', 'TOTAL_MISMATCH_CAD',
       `Sheet TOTAL says CAD ${money(declaredTotals.cad).toFixed(2)} but the parsed rows add up to CAD ${computedTotals.cad.toFixed(2)}.`));
   }
-  if (declaredTotals?.ghs != null && Math.abs(money(declaredTotals.ghs) - computedTotals.ghs) > 0.01) {
+  // Compare against the pre-floor sum: the sheet's own TOTAL includes pesewas, so
+  // checking the floored figure here would flag every sheet as mismatched.
+  if (declaredTotals?.ghs != null && Math.abs(money(declaredTotals.ghs) - computedTotals.ghsRaw) > 0.01) {
     sheetIssues.push(issue('warning', 'TOTAL_MISMATCH_GHS',
-      `Sheet TOTAL says GHS ${money(declaredTotals.ghs).toFixed(2)} but the parsed rows add up to GHS ${computedTotals.ghs.toFixed(2)}.`));
+      `Sheet TOTAL says GHS ${money(declaredTotals.ghs).toFixed(2)} but the parsed rows add up to GHS ${computedTotals.ghsRaw.toFixed(2)}.`));
   }
 
   return {
