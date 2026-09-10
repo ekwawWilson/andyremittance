@@ -9,7 +9,7 @@ import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
 import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 import { printReceipt, printMultiReceiverReceipt } from '@/lib/print-receipt';
 import { exportToExcel, exportToPDF, SummaryItem } from '@/lib/utils/export';
-import { fmtGHS, fmtNum } from '@/lib/utils/format';
+import { fmtGHS } from '@/lib/utils/format';
 
 /**
  * Where the money is actually going.  Rendered under the Mode badge on desktop
@@ -204,7 +204,9 @@ function pendingCellValue(t: Transaction, key: PendingColKey): string {
     case 'code':            return row.code;
     case 'sender':          return row.sender;
     case 'receiver':        return row.receiver;
-    case 'amount':          return fmtNum(row.amount);
+    // Whole cedis with no trailing .00, matching the two columns derived from it
+    // and the sending side's own sheet — 10,001 / 100 / 9,901.
+    case 'amount':          return payoutBase(row.amount).toLocaleString('en-US');
     case 'mode':            return row.mode;
     case 'bankName':        return row.bankName || '';
     case 'bankAccountNo':   return row.bankAccountNo || '';
@@ -646,7 +648,7 @@ export default function PendingPaymentsPage() {
     // Only the columns left visible in the picker reach the file.
     const rows = filtered.map((t) =>
       exportCols.map((c) => {
-        if (c.key === 'amount') return fmtGHS(buildPendingExportRow(t).amount);
+        if (c.key === 'amount') return payoutBase(buildPendingExportRow(t).amount).toLocaleString('en-US');
         // Remark is meant to stay blank so it can be written in by hand.
         if (c.key === 'remark') return '';
         return pendingCellValue(t, c.key) || '—';
