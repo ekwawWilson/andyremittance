@@ -126,16 +126,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Aggregate today's disbursements
-    const disbursementStats = await prisma.transaction.aggregate({
-      where: {
-        receivingPointId,
-        status: 'PAID',
-        paidAt: { gte: businessDate, lt: nextDay },
+    // What actually left the branch today.
+    //
+    // Counting only PAID transactions missed every instalment on a transaction
+    // still sitting at PARTIAL_PAYMENT — real cash, not reported. But a
+    // transaction finished off in instalments ends up PAID *and* carrying
+    // sub-payments for its full value, so adding the two naively double-counts.
+    //
+    // These two sets are therefore disjoint by construction:
+    //   · transactions paid in a single go   — PAID, with no sub-payments
+    //   · every sub-payment made today       — whatever its transaction's status
+    //
+    // Reversed disbursements fall out of both: reversal clears paidAt, resets the
+    // status to SYNCED and deletes the sub-payments it undid.
+    const [singlePayouts, instalments] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: {
+          receivingPointId,
+          status: 'PAID',
+          paidAt: { gte: businessDate, lt: nextDay },
+          subPayments: { none: {} },
+        },
+        _sum: { ghsAmount: true },
+        _count: true,
+      }),
+      prisma.subPayment.aggregate({
+        where: {
+          paidAt: { gte: businessDate, lt: nextDay },
+          transaction: { receivingPointId },
+        },
+        _sum: { ghsAmount: true },
+        _count: true,
+      }),
+    ]);
+
+    const disbursementStats = {
+      _sum: {
+        ghsAmount:
+          Number(singlePayouts._sum.ghsAmount ?? 0) + Number(instalments._sum.ghsAmount ?? 0),
       },
-      _sum: { ghsAmount: true },
-      _count: true,
-    });
+      _count: singlePayouts._count + instalments._count,
+    };
 
     // Advancing the business date and writing the record must happen together.
     // Done separately, a failure between them left the branch on the next day

@@ -378,9 +378,13 @@ Cr  EQUITY-RETAINED-GHS        +V GHS
 ```
 1. Validate guards above
 
-2. Aggregate today's PAID + PARTIAL_PAYMENT transactions:
-   - Sum ghsAmount → totalDisbursed
-   - Count rows → disbursementCount
+2. Aggregate the cash that actually left the branch today, from two disjoint sets:
+   - transactions PAID today that carry no sub-payments (paid in a single go)
+   - every sub-payment made today, whatever its transaction's status
+   A transaction finished off in instalments ends up PAID *and* carrying
+   sub-payments for its full value, so the first set excludes those to avoid
+   double-counting. Reversed disbursements fall out of both: reversal clears
+   paidAt, resets the status to SYNCED and deletes the sub-payments it undid.
 
 3. Advance ReceivingPoint.serverDate to next calendar day (UTC)
 
