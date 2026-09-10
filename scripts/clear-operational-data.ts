@@ -4,11 +4,15 @@
  * Wipes every operational record while keeping the things people log in with
  * and the accounts the system needs to function:
  *
- *   KEPT    User · Role · Permission · ReceivingPoint
+ *   KEPT    User · Role · Permission · ReceivingPoint · SystemConfig
  *           LedgerAccount (the chart of accounts) — balances reset to zero
  *   DELETED transactions, senders, receivers, journals, ledger entries,
  *           reconciliations, EOD records, transfers, rates, notifications,
- *           audit log, system config, and per-sender ledger accounts
+ *           audit log, and per-sender ledger accounts
+ *
+ * SystemConfig is kept deliberately: it is the sending portal's business-date
+ * singleton, and without it the dashboard's "today" panel and the EOD flow have
+ * no date to work from.
  *
  * Receiving points are kept deliberately: users carry a receivingPointId, so
  * dropping branches would orphan every teller and manager.
@@ -72,7 +76,6 @@ async function main() {
     ['ExchangeRate',         () => prisma.exchangeRate.deleteMany()],
     ['AccountingPeriod',     () => prisma.accountingPeriod.deleteMany()],
     ['AuditLog',             () => prisma.auditLog.deleteMany()],
-    ['SystemConfig',         () => prisma.systemConfig.deleteMany()],
     // Per-sender ledger accounts belong to senders that no longer exist.
     ['LedgerAccount(SENDER)',() => prisma.ledgerAccount.deleteMany({ where: { accountType: 'SENDER' } })],
   ];

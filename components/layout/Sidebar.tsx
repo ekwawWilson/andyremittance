@@ -319,7 +319,7 @@ export default function Sidebar({ portal }: SidebarProps) {
               <AndyDLogo size={16} variant="white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-bold text-white leading-tight">Petros Remittance</p>
+              <p className="text-[13px] font-bold text-white leading-tight">PETROS</p>
               <p className="text-[11px] text-white/70 leading-tight">{acc.label} Portal</p>
             </div>
           </div>

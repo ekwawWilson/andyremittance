@@ -1,7 +1,7 @@
 import type { Transaction } from '@/lib/api-client';
 
-const COMPANY_NAME    = process.env.NEXT_PUBLIC_COMPANY_NAME    ?? 'PETROS REMITTANCE';
-const COMPANY_TAGLINE = process.env.NEXT_PUBLIC_COMPANY_TAGLINE ?? 'Canada–Ghana Remittance';
+const COMPANY_NAME    = process.env.NEXT_PUBLIC_COMPANY_NAME    ?? 'PETROS';
+const COMPANY_TAGLINE = process.env.NEXT_PUBLIC_COMPANY_TAGLINE ?? 'Canada–Ghana';
 const COMPANY_EMAIL   = process.env.NEXT_PUBLIC_COMPANY_EMAIL   ?? 'admin@petrosremittance.com';
 
 export interface ReceiptPrintOptions {

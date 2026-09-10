@@ -7,7 +7,7 @@ interface AndyDLogoProps {
 }
 
 /**
- * Petros Remittance brand mark.
+ * PETROS brand mark.
  *
  * The mark is a rounded-square badge containing:
  *  - Top line: stylised "AD" monogram (bold geometric letters)
@@ -35,7 +35,7 @@ export default function AndyDLogo({ size = 48, variant = 'color', className = ''
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Petros Remittance"
+      aria-label="PETROS"
     >
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">

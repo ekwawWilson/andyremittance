@@ -259,7 +259,7 @@ export default function ReceivingEodPage() {
 
         <div class="footer">
           <span>This is an official branch EOD report. Keep for records.</span>
-          <span>Petros Remittance &mdash; Branch EOD</span>
+          <span>PETROS &mdash; Branch EOD</span>
         </div>
         <script>window.print();<\/script>
       </body>

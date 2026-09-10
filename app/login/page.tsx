@@ -55,7 +55,7 @@ export default function LoginPage() {
 
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h2>
-              <p className="mt-1.5 text-sm text-gray-500">Sign in to your Petros Remittance account</p>
+              <p className="mt-1.5 text-sm text-gray-500">Sign in to your PETROS account</p>
             </div>
 
             <div className="bg-white shadow-sm ring-1 ring-black/5 p-6 sm:p-7">
@@ -79,7 +79,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@petrosremittance.com"
+                    placeholder="you@andydenterprise.com"
                     required
                     autoComplete="email"
                     className="block w-full h-11 border border-gray-300 bg-white px-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition"

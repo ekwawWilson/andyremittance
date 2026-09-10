@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Petros Remittance",
-  description: "Petros Remittance — Canada to Ghana Remittance Management",
+  title: "PETROS",
+  description: "PETROS — Canada to Ghana money transfer management",
 };
 
 export default function RootLayout({

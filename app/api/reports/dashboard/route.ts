@@ -42,12 +42,26 @@ export async function GET(request: NextRequest) {
       if (endDate) where.transactionDate.lte = new Date(endDate);
     }
 
-    // Use the business server date so "today" reflects the configured business date,
-    // not the wall-clock date (which diverges when the sending admin has advanced/rolled back the date).
-    const config = await prisma.systemConfig.findFirst();
-    const businessDateStr = config?.sendingServerDate
+    // The "today" panel follows the configured business date, but falls back to the
+    // most recent date that actually has transactions when that date is empty.
+    // Without this the panel reads zero whenever the business date has moved past
+    // the data — a branch that closed EOD, or a day-sheet carrying an older date —
+    // which makes a working dashboard look broken.
+    const [config, latestTx] = await Promise.all([
+      prisma.systemConfig.findFirst(),
+      prisma.transaction.aggregate({ where, _max: { transactionDate: true } }),
+    ]);
+
+    const configuredStr = config?.sendingServerDate
       ? new Date(config.sendingServerDate).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
+    const latestStr = latestTx._max.transactionDate?.toISOString().split('T')[0] ?? null;
+
+    // Never look past the newest transaction — there is nothing there to count.
+    const businessDateStr =
+      latestStr && latestStr < configuredStr ? latestStr : configuredStr;
+    const usingLatestActivity = businessDateStr !== configuredStr;
+
     const todayDate = new Date(`${businessDateStr}T00:00:00.000Z`);
     const tomorrowDate = new Date(todayDate);
     tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
@@ -66,9 +80,17 @@ export async function GET(request: NextRequest) {
       status: 'CANCELLED',
     };
 
-    // Use groupBy + aggregate to minimise queries (connection_limit=1)
-    // 1. All-time: status counts + totals (CANCELLED excluded via base where)
-    const [allStatusGroups, cancelledTransactions, todayCancelled] = await Promise.all([
+    // Every figure on the dashboard is independent, so they all go out together.
+    // Run sequentially this took ~7s against 65k rows — each await is a round trip
+    // to the database, and there were four of them.
+    const [
+      allStatusGroups,
+      cancelledTransactions,
+      todayCancelled,
+      todayStatusGroups,
+      recentTransactions,
+      vaults,
+    ] = await Promise.all([
       prisma.transaction.groupBy({
         by: ['status'],
         where,
@@ -77,6 +99,38 @@ export async function GET(request: NextRequest) {
       }),
       prisma.transaction.count({ where: cancelledWhere }),
       prisma.transaction.count({ where: todayCancelledWhere }),
+      prisma.transaction.groupBy({
+        by: ['status'],
+        where: todayWhere,
+        _count: true,
+        _sum: { cadAmount: true, ghsAmount: true },
+      }),
+      prisma.transaction.findMany({
+        where: todayWhere,
+        select: {
+          id: true,
+          transactionCode: true,
+          codeType: true,
+          status: true,
+          cadAmount: true,
+          ghsAmount: true,
+          receivingMode: true,
+          transactionDate: true,
+          createdAt: true,
+          sender: { select: { firstName: true, lastName: true } },
+          receiver: { select: { firstName: true, lastName: true } },
+          receivingPoint: { select: { name: true, code: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.ledgerAccount.findMany({
+        where: {
+          accountType: 'COMPANY_VAULT',
+          ...(receivingPointId ? { receivingPointId } : {}),
+        },
+        include: { receivingPoint: { select: { name: true, code: true } } },
+      }),
     ]);
 
     let totalTransactions = 0;
@@ -94,14 +148,6 @@ export async function GET(request: NextRequest) {
       else if (g.status === 'PAID') paidTransactions = g._count;
     }
 
-    // 2. Today: status counts + totals (CANCELLED excluded via todayWhere)
-    const todayStatusGroups = await prisma.transaction.groupBy({
-      by: ['status'],
-      where: todayWhere,
-      _count: true,
-      _sum: { cadAmount: true, ghsAmount: true },
-    });
-
     let todayCount = 0;
     let todayPending = 0;
     let todaySynced = 0;
@@ -117,39 +163,6 @@ export async function GET(request: NextRequest) {
       else if (g.status === 'PAID') todayPaid = g._count;
     }
 
-    // 3. Today's transactions list (most recent 50, branch-scoped)
-    const recentTransactions = await prisma.transaction.findMany({
-      where: todayWhere,
-      select: {
-        id: true,
-        transactionCode: true,
-        codeType: true,
-        status: true,
-        cadAmount: true,
-        ghsAmount: true,
-        receivingMode: true,
-        transactionDate: true,
-        createdAt: true,
-        sender: { select: { firstName: true, lastName: true } },
-        receiver: { select: { firstName: true, lastName: true } },
-        receivingPoint: { select: { name: true, code: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    // 4. Vault balances
-    const vaults = await prisma.ledgerAccount.findMany({
-      where: {
-        accountType: 'COMPANY_VAULT',
-        ...(receivingPointId ? { receivingPointId } : {}),
-      },
-      include: {
-        receivingPoint: {
-          select: { name: true, code: true },
-        },
-      },
-    });
 
     return successResponse({
       summary: {
@@ -162,6 +175,9 @@ export async function GET(request: NextRequest) {
         totalCAD: allCAD,
         totalGHS: allGHS,
       },
+      /** The date the "today" panel covers, and whether it fell back to it. */
+      businessDate: businessDateStr,
+      usingLatestActivity,
       today: {
         count: todayCount,
         pending: todayPending,

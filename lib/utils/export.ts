@@ -105,7 +105,7 @@ export function exportToPDF(
     <div class="hdr"><h1>${title}</h1><p>${subtitle || 'Generated: ' + generated}</p></div>
     ${summaryHtml}
     <table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
-    <div class="ftr">Andy Remittance — Confidential Report</div>
+    <div class="ftr">PETROS — Confidential Report</div>
     <script>window.onload=function(){setTimeout(function(){window.print()},350)};window.onafterprint=function(){window.close()};</script>
   </body></html>`;
 
