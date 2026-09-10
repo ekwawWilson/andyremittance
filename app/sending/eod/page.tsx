@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, EndOfDayRecord, Transaction } from '@/lib/api-client';
 import { TransactionStatusBadge } from '@/components/ui/Badge';
+import { REPORT_TABLE_CSS } from '@/lib/utils/export';
 
 // Advance a YYYY-MM-DD string by one calendar day
 function addOneDay(d: string) {
@@ -56,7 +57,8 @@ function buildReportHTML(record: EndOfDayRecord, agentName: string): string {
   .box{border:1px solid #d1d5db;border-radius:6px;padding:10px}
   .box .label{font-size:10px;text-transform:uppercase;color:#6b7280} .box .value{font-size:17px;font-weight:700;margin-top:2px}
   .debt{background:#fef3c7} @media print{body{margin:24px}}
-</style></head><body>
+${REPORT_TABLE_CSS}
+  </style></head><body>
 <div class="header-row"><div><h1>End-of-Day Report</h1><p class="meta">Date: <strong>${dateStr}</strong> &nbsp; Closed by: <strong>${agentName}</strong> &nbsp; At: ${closedAt}</p></div></div>
 <h2>Summary</h2>
 <div class="grid3">

@@ -8,6 +8,7 @@ import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
 import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 import { printReceipt } from '@/lib/print-receipt';
 import Modal from '@/components/ui/Modal';
+import { REPORT_TABLE_CSS, exportToExcel, type SummaryItem } from '@/lib/utils/export';
 
 function fmt(n: number) {
   return n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -39,6 +40,34 @@ function SummaryCard({ label, value, sub, color = 'text-gray-900' }: { label: st
   );
 }
 
+/**
+ * Columns this page can show and export. One registry drives the table, the PDF
+ * and the workbook, so a column hidden in the picker is genuinely absent from
+ * the file rather than blanked out.
+ *
+ * `table: false` marks a column that only exists in exports.
+ */
+const DISB_COLUMNS = [
+  { key: 'code',       label: 'Code',      table: true,  defaultOn: true  },
+  { key: 'sender',     label: 'Sender',    table: true,  defaultOn: true  },
+  { key: 'receiver',   label: 'Receiver',  table: true,  defaultOn: true  },
+  { key: 'disbursed',  label: 'Disbursed', table: true,  defaultOn: true  },
+  { key: 'total',      label: 'Total',     table: true,  defaultOn: true  },
+  { key: 'mode',       label: 'Mode',      table: true,  defaultOn: true  },
+  { key: 'teller',     label: 'Teller',    table: true,  defaultOn: true  },
+  { key: 'paidAt',     label: 'Paid At',   table: true,  defaultOn: true  },
+  { key: 'status',     label: 'Status',        table: false, defaultOn: false },
+  { key: 'momoNumber', label: 'MoMo Number',   table: false, defaultOn: false },
+  { key: 'bankName',   label: 'Bank Name',     table: false, defaultOn: false },
+  { key: 'bankAccountNo', label: 'Account No.', table: false, defaultOn: false },
+  { key: 'remark',     label: 'Remark',        table: false, defaultOn: false },
+] as const;
+
+type DisbColKey = (typeof DISB_COLUMNS)[number]['key'];
+const DISB_ALL_KEYS = DISB_COLUMNS.map((c) => c.key) as DisbColKey[];
+const DISB_DEFAULT_KEYS = DISB_COLUMNS.filter((c) => c.defaultOn).map((c) => c.key) as DisbColKey[];
+const DISB_PREFS_KEY = 'disbursements.visibleColumns';
+
 export default function DisbursementsPage() {
   const { user } = useAuth();
   const { serverDate, loading: serverDateLoading } = useReceivingServerDate();
@@ -46,6 +75,36 @@ export default function DisbursementsPage() {
   const { latestDate, loading: latestLoading } = useLatestTransactionDate(serverDate, {
     status: 'PAID,PARTIAL_PAYMENT',
   });
+
+  // Column visibility — drives the table, the PDF and the workbook.
+  const [visibleCols, setVisibleCols] = useState<Set<DisbColKey>>(new Set(DISB_DEFAULT_KEYS));
+  const [colMenuOpen, setColMenuOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DISB_PREFS_KEY);
+      if (!saved) return;
+      const keys = (JSON.parse(saved) as string[]).filter((k): k is DisbColKey =>
+        (DISB_ALL_KEYS as string[]).includes(k));
+      if (keys.length) setVisibleCols(new Set(keys));
+    } catch { /* unreadable storage — keep the defaults */ }
+  }, []);
+
+  const persistCols = (next: Set<DisbColKey>) => {
+    setVisibleCols(next);
+    try { localStorage.setItem(DISB_PREFS_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+  };
+
+  const toggleCol = (key: DisbColKey) => {
+    const next = new Set(visibleCols);
+    // Never leave the export with no columns at all.
+    if (next.has(key)) { if (next.size === 1) return; next.delete(key); }
+    else next.add(key);
+    persistCols(next);
+  };
+
+  const showCol = (key: DisbColKey) => visibleCols.has(key);
+  const exportCols = DISB_COLUMNS.filter((c) => visibleCols.has(c.key));
 
   // Reversal requests — a teller cannot undo their own payout, they ask for it.
   const canRequestChange = user?.permissions?.includes('REQUEST_TRANSACTION_CHANGE');
@@ -145,6 +204,26 @@ export default function DisbursementsPage() {
     return Number(t.ghsAmount);
   };
 
+  /** One column's value for one row — shared by the PDF and the workbook. */
+  const cellValue = (t: Transaction, key: DisbColKey): string => {
+    switch (key) {
+      case 'code':          return t.transactionCode;
+      case 'sender':        return `${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}`.trim();
+      case 'receiver':      return `${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}`.trim();
+      case 'disbursed':     return fmt(disbursedAmount(t));
+      case 'total':         return fmt(Number(t.ghsAmount));
+      case 'mode':          return t.receivingMode;
+      case 'teller':        return t.paidByName || '';
+      case 'paidAt':        return t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH') : '';
+      case 'status':        return t.status;
+      case 'momoNumber':    return t.momoNumber || '';
+      case 'bankName':      return t.bankName || '';
+      case 'bankAccountNo': return t.bankAccountNo || '';
+      // Deliberately blank — a column to write in on the printed sheet.
+      case 'remark':        return '';
+    }
+  };
+
   // Summary stats
   const totalGHS = filtered.reduce((sum, t) => sum + disbursedAmount(t), 0);
   const byMode = filtered.reduce((acc, t) => {
@@ -153,40 +232,35 @@ export default function DisbursementsPage() {
   }, {} as Record<string, number>);
   const partialCount = filtered.filter((t) => t.status === 'PARTIAL_PAYMENT').length;
 
-  // Export CSV
-  const handleExportCsv = () => {
-    const headers = ['Code', 'Sender', 'Receiver', 'GHS Amount', 'Mode', 'Paid By', 'Paid At'];
-    const rows = filtered.map((t) => [
-      t.transactionCode,
-      `${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}`.trim(),
-      `${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}`.trim(),
-      fmt(Number(t.ghsAmount)),
-      t.receivingMode,
-      t.paidByName || '',
-      t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH') : '',
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `disbursements-${dateFrom}${dateTo !== dateFrom ? `-to-${dateTo}` : ''}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Export Excel — only the columns left ticked in the picker.
+  const handleExportExcel = async () => {
+    const summary: SummaryItem[] = [
+      { label: 'Transactions', value: String(filtered.length) },
+      { label: 'Total Disbursed', value: `GHS ${fmt(totalGHS)}`, highlight: 'green' },
+      { label: 'Partial', value: String(partialCount), highlight: 'purple' },
+    ];
+    await exportToExcel(
+      'Disbursements',
+      exportCols.map((c) => c.label),
+      filtered.map((t) => exportCols.map((c) => cellValue(t, c.key))),
+      `disbursements-${dateFrom}${dateTo !== dateFrom ? `-to-${dateTo}` : ''}`,
+      summary
+    );
   };
 
   // Export PDF
   const handleExportPdf = () => {
+    // Only the ticked columns reach the page.
+    const NUMERIC = new Set<DisbColKey>(['disbursed', 'total']);
     const rows = filtered.map((t) => `
-      <tr>
-        <td class="mono">${t.transactionCode}</td>
-        <td>${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}</td>
-        <td>${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}</td>
-        <td style="text-align:right">GHS ${fmt(Number(t.ghsAmount))}</td>
-        <td>${t.receivingMode}</td>
-        <td>${t.paidByName || '—'}</td>
-        <td>${t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-      </tr>`).join('');
+      <tr>${exportCols.map((c) => {
+        const v = cellValue(t, c.key);
+        const cls = c.key === 'code' ? ' class="mono"' : '';
+        const align = NUMERIC.has(c.key) ? ' style="text-align:right"' : '';
+        // Remark stays blank so it can be written in by hand.
+        const text = c.key === 'remark' ? '' : (v || '—');
+        return `<td${cls}${align}>${NUMERIC.has(c.key) && v ? 'GHS ' + v : text}</td>`;
+      }).join('')}</tr>`).join('');
 
     const modeBreakdownRows = Object.entries(byMode).map(([mode, amount]) =>
       `<div class="mode-item"><span>${mode}</span><strong>GHS ${fmt(amount)}</strong></div>`
@@ -211,7 +285,8 @@ export default function DisbursementsPage() {
         .mono { font-family: monospace; }
         .total-row td { background: #f0fdf4; font-weight: bold; border-top: 2px solid #d1fae5; }
         @media print { body { margin: 16px; } }
-      </style></head><body>
+      ${REPORT_TABLE_CSS}
+  </style></head><body>
       <h1>Disbursements Report</h1>
       <p class="meta">
         Branch: <strong>${user?.receivingPoint?.name || '—'}</strong> &nbsp;|&nbsp;
@@ -227,15 +302,25 @@ export default function DisbursementsPage() {
       </div>
       ${modeBreakdownRows ? `<div class="mode-breakdown">${modeBreakdownRows}</div>` : ''}
       <table><thead><tr>
-        <th>Code</th><th>Sender</th><th>Receiver</th><th style="text-align:right">GHS</th><th>Mode</th><th>Teller</th><th>Paid At</th>
+        ${exportCols.map((c) => `<th${NUMERIC.has(c.key) ? ' style="text-align:right"' : ''}>${c.label}</th>`).join('')}
       </tr></thead>
       <tbody>
         ${rows}
-        <tr class="total-row">
-          <td colspan="3">Total</td>
-          <td style="text-align:right">GHS ${fmt(totalGHS)}</td>
-          <td colspan="3">${filtered.length} transaction${filtered.length !== 1 ? 's' : ''}</td>
-        </tr>
+        <tr class="total-row">${(() => {
+          // The total sits under whichever amount column is showing; the label
+          // spans everything before it and the count everything after, so the
+          // row still lines up whatever the picker leaves visible.
+          const amtIdx = exportCols.findIndex((c) => c.key === 'disbursed' || c.key === 'total');
+          if (amtIdx === -1) {
+            return `<td colspan="${exportCols.length}">Total — GHS ${fmt(totalGHS)} across ${filtered.length} transaction${filtered.length !== 1 ? 's' : ''}</td>`;
+          }
+          const after = exportCols.length - amtIdx - 1;
+          return [
+            amtIdx > 0 ? `<td colspan="${amtIdx}">Total</td>` : '',
+            `<td style="text-align:right">GHS ${fmt(totalGHS)}</td>`,
+            after > 0 ? `<td colspan="${after}">${filtered.length} transaction${filtered.length !== 1 ? 's' : ''}</td>` : '',
+          ].join('');
+        })()}</tr>
       </tbody></table>
       <script>window.print();<\/script>
     </body></html>`;
@@ -265,15 +350,55 @@ export default function DisbursementsPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Column picker — what is unticked here is absent from both exports */}
+          <div className="relative">
+            <button
+              onClick={() => setColMenuOpen((o) => !o)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span className="hidden sm:inline">Columns</span>
+              {visibleCols.size !== DISB_DEFAULT_KEYS.length && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                  {visibleCols.size}/{DISB_ALL_KEYS.length}
+                </span>
+              )}
+            </button>
+            {colMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setColMenuOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                  <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-gray-100">
+                    <span className="text-xs font-semibold text-gray-500">Show columns</span>
+                    <button onClick={() => persistCols(new Set(DISB_DEFAULT_KEYS))}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium">Reset</button>
+                  </div>
+                  {DISB_COLUMNS.map((c) => (
+                    <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                      <span className="text-sm text-gray-700">{c.label}</span>
+                      {!c.table && <span className="ml-auto text-[10px] text-gray-400">export</span>}
+                    </label>
+                  ))}
+                  <p className="px-2 pt-2 mt-1 border-t border-gray-100 text-[11px] leading-snug text-gray-400">
+                    Unticked columns are left out of the PDF and Excel exports.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
           <button
-            onClick={handleExportCsv}
+            onClick={() => void handleExportExcel()}
             disabled={filtered.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            CSV
+            Excel
           </button>
           <Button variant="secondary" onClick={handleExportPdf} disabled={filtered.length === 0}>
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,14 +579,14 @@ export default function DisbursementsPage() {
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="py-3 px-2 w-8"></th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Code</th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Sender</th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Receiver</th>
-                      <th className="text-right py-3 px-4 text-gray-600 font-semibold">Disbursed</th>
-                      <th className="text-right py-3 px-4 text-gray-600 font-semibold">Total</th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Mode</th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Teller</th>
-                      <th className="text-left py-3 px-4 text-gray-600 font-semibold">Paid At</th>
+                      {showCol('code') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Code</th>}
+                      {showCol('sender') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Sender</th>}
+                      {showCol('receiver') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Receiver</th>}
+                      {showCol('disbursed') && <th className="text-right py-3 px-4 text-gray-600 font-semibold">Disbursed</th>}
+                      {showCol('total') && <th className="text-right py-3 px-4 text-gray-600 font-semibold">Total</th>}
+                      {showCol('mode') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Mode</th>}
+                      {showCol('teller') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Teller</th>}
+                      {showCol('paidAt') && <th className="text-left py-3 px-4 text-gray-600 font-semibold">Paid At</th>}
                       <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
@@ -487,30 +612,46 @@ export default function DisbursementsPage() {
                                 </button>
                               ) : null}
                             </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-xs text-blue-600 font-semibold">{t.transactionCode}</span>
-                                {isPartial && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">PARTIAL</span>}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">{t.sender?.firstName} {t.sender?.lastName}</td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {t.receiver?.firstName || t.receiver?.lastName ? `${t.receiver!.firstName} ${t.receiver!.lastName}` : '—'}
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-emerald-700 tabular-nums">GHS {fmt(disbursed)}</td>
-                            <td className="py-3 px-4 text-right tabular-nums">
-                              {isPartial ? (
-                                <div>
-                                  <span className="text-gray-500 text-xs">GHS {fmt(total)}</span>
-                                  <p className="text-[10px] text-amber-600 font-medium">Rem: {fmt(remaining)}</p>
+                            {showCol('code') && (
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-xs text-blue-600 font-semibold">{t.transactionCode}</span>
+                                  {isPartial && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">PARTIAL</span>}
                                 </div>
-                              ) : <span className="text-gray-400 text-xs">GHS {fmt(total)}</span>}
-                            </td>
-                            <td className="py-3 px-4"><ModeBadge mode={t.receivingMode} /></td>
-                            <td className="py-3 px-4 text-gray-600 text-xs">{t.paidByName || '—'}</td>
-                            <td className="py-3 px-4 text-gray-500 text-xs font-mono">
-                              {t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : isPartial ? <span className="text-amber-500">In progress</span> : '—'}
-                            </td>
+                              </td>
+                            )}
+                            {showCol('sender') && (
+                              <td className="py-3 px-4 text-gray-700">{t.sender?.firstName} {t.sender?.lastName}</td>
+                            )}
+                            {showCol('receiver') && (
+                              <td className="py-3 px-4 text-gray-700">
+                                {t.receiver?.firstName || t.receiver?.lastName ? `${t.receiver!.firstName} ${t.receiver!.lastName}` : '—'}
+                              </td>
+                            )}
+                            {showCol('disbursed') && (
+                              <td className="py-3 px-4 text-right font-bold text-emerald-700 tabular-nums">GHS {fmt(disbursed)}</td>
+                            )}
+                            {showCol('total') && (
+                              <td className="py-3 px-4 text-right tabular-nums">
+                                {isPartial ? (
+                                  <div>
+                                    <span className="text-gray-500 text-xs">GHS {fmt(total)}</span>
+                                    <p className="text-[10px] text-amber-600 font-medium">Rem: {fmt(remaining)}</p>
+                                  </div>
+                                ) : <span className="text-gray-400 text-xs">GHS {fmt(total)}</span>}
+                              </td>
+                            )}
+                            {showCol('mode') && (
+                              <td className="py-3 px-4"><ModeBadge mode={t.receivingMode} /></td>
+                            )}
+                            {showCol('teller') && (
+                              <td className="py-3 px-4 text-gray-600 text-xs">{t.paidByName || '—'}</td>
+                            )}
+                            {showCol('paidAt') && (
+                              <td className="py-3 px-4 text-gray-500 text-xs font-mono">
+                                {t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : isPartial ? <span className="text-amber-500">In progress</span> : '—'}
+                              </td>
+                            )}
                             <td className="py-3 px-4">
                               {t.receivingMode === 'CASH' && !isPartial ? (
                                 <button onClick={() => printReceipt(t, user?.receivingPoint?.name ?? 'Branch')} title="Print receipt"
@@ -535,7 +676,7 @@ export default function DisbursementsPage() {
                           </tr>
                           {hasPartials && isOpen && (
                             <tr key={`${t.id}-subs`} className="bg-amber-50/60 border-b border-amber-100">
-                              <td colSpan={10} className="px-6 py-0">
+                              <td colSpan={visibleCols.size + 2} className="px-6 py-0">
                                 <div className="py-3">
                                   <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider mb-2">Partial Payments ({subs.length})</p>
                                   <table className="w-full text-xs">

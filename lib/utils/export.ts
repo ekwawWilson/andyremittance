@@ -9,6 +9,31 @@ export interface SummaryItem {
   highlight?: 'red' | 'green' | 'blue' | 'purple';
 }
 
+/**
+ * Shared table styling for every printed report.
+ *
+ * Appended last in each report's <style> block so it wins on ordering without
+ * anyone having to rewrite their existing rules.
+ *
+ * The print-color-adjust declaration is the important one: browsers drop
+ * background colours when printing, so a header fill or a striped row defined
+ * in CSS simply vanishes from the PDF. Without it the shading below is
+ * invisible on paper no matter how it is written.
+ *
+ * Rows carrying `.total-row` are excluded from the striping so their own
+ * highlight survives.
+ */
+export const REPORT_TABLE_CSS = `
+  *, *::before, *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #94a3b8; }
+  thead th { background: #1e3a5f !important; color: #fff !important; }
+  tbody tr:nth-child(even):not(.total-row) > td { background: #eef2f7; }
+  tbody tr:nth-child(odd):not(.total-row)  > td { background: #ffffff; }
+  tbody tr:last-child > td { border-bottom: 1px solid #94a3b8; }
+  @media print { thead { display: table-header-group; } tr { page-break-inside: avoid; } }
+`;
+
 export async function exportToExcel(
   title: string,
   headers: string[],
@@ -96,11 +121,10 @@ export function exportToPDF(
     .hdr p{font-size:11px;color:#6b7280;margin-top:3px}
     table{width:100%;border-collapse:collapse;margin-top:4px}
     th{background:#1e3a5f;color:#fff;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
-    td{padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px}
-    tr:nth-child(even) td{background:#f8fafc}
-    tr:last-child td{border-bottom:none}
+    td{padding:8px 12px;font-size:12px}
     .ftr{margin-top:24px;text-align:center;color:#9ca3af;font-size:10px}
     @media print{body{padding:20px 32px}@page{margin:14mm}}
+    ${REPORT_TABLE_CSS}
   </style></head><body>
     <div class="hdr"><h1>${title}</h1><p>${subtitle || 'Generated: ' + generated}</p></div>
     ${summaryHtml}

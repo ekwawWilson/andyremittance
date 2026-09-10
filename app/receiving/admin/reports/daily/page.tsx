@@ -4,6 +4,7 @@ import { apiClient, Transaction } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
+import { REPORT_TABLE_CSS } from '@/lib/utils/export';
 
 function fmtGHS(n: number) {
   return n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -172,7 +173,8 @@ export default function DailyTransactionReportPage() {
   td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
   tfoot td { font-weight: bold; border-top: 2px solid #d1d5db; }
   @media print { @page { size: A4 landscape; margin: 12mm; } }
-</style></head><body>
+${REPORT_TABLE_CSS}
+  </style></head><body>
 <h2>Transaction Report — ${branchName}</h2>
 <p>Period: ${startDate} to ${endDate} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString()}</p>
 <table>

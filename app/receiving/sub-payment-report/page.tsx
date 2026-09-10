@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
+import { REPORT_TABLE_CSS } from '@/lib/utils/export';
 
 function fmt(n: number) {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -75,7 +76,8 @@ export default function SubPaymentReportPage() {
         td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
         .summary { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
         @media print { body { margin: 0; } }
-      </style></head><body>
+      ${REPORT_TABLE_CSS}
+  </style></head><body>
       <h2>Sub-Payment Report</h2>
       <div class="summary">
         Branch: <strong>${user?.receivingPoint?.name || '—'}</strong> &nbsp;|&nbsp;

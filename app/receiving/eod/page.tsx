@@ -4,6 +4,7 @@ import { apiClient, EodCheckResult, EodCheckTellerStatus, ReceivingEodRecord, Re
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { REPORT_TABLE_CSS } from '@/lib/utils/export';
 
 function fmt(n: number) {
   return Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -222,7 +223,8 @@ export default function ReceivingEodPage() {
           td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
           .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #888; display: flex; justify-content: space-between; }
           @media print { button { display: none !important; } body { padding: 16px; } }
-        </style>
+        ${REPORT_TABLE_CSS}
+  </style>
       </head>
       <body>
         <div class="header">

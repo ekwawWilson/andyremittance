@@ -104,3 +104,32 @@ label {
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Printed reports ────────────────────────────────────────────────────────
+ * Pages that print the live DOM (window.print) rather than generating their own
+ * HTML document. Generated reports pull the same rules from REPORT_TABLE_CSS in
+ * lib/utils/export.ts.
+ *
+ * print-color-adjust is what makes the shading appear at all — browsers drop
+ * background colours when printing unless explicitly told to keep them.
+ */
+@media print {
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th, td { border: 1px solid #94a3b8 !important; }
+
+  thead th { background: #1e3a5f !important; color: #fff !important; }
+
+  /* Rows marked as totals keep their own highlight. */
+  tbody tr:nth-child(even):not(.total-row) > td { background: #eef2f7 !important; }
+  tbody tr:nth-child(odd):not(.total-row)  > td { background: #ffffff !important; }
+
+  /* Repeat headers across pages and avoid splitting a row down the middle. */
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+}

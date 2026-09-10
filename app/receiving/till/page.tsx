@@ -8,6 +8,7 @@ import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
+import { REPORT_TABLE_CSS } from '@/lib/utils/export';
 
 function fmt(n: number | null | undefined): string {
   if (n == null || isNaN(Number(n))) return '0.00';
@@ -231,7 +232,8 @@ export default function TillPage() {
         td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
         .total-row { font-weight: bold; background: #f0fdf4; }
         @media print { button { display: none !important; } }
-      </style></head><body>
+      ${REPORT_TABLE_CSS}
+  </style></head><body>
       <h1>Teller Till Slip</h1>
       <p class="meta">
         Account: <strong>${status.till?.accountName ?? ''}</strong> &nbsp;|&nbsp;
