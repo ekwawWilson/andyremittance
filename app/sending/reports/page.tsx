@@ -7,6 +7,7 @@ import { TransactionStatusBadge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import ExportButtons from '@/components/ui/ExportButtons';
 import { fmtCAD, fmtGHS } from '@/lib/utils/format';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 interface AgentOption { id: string; firstName: string; lastName: string; }
 
@@ -14,8 +15,20 @@ export default function SendingReportsPage() {
   const { user } = useAuth();
   const [report, setReport] = useState<AgentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    setStartDate(latestDate);
+    setEndDate(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [filterBranch, setFilterBranch] = useState('');
   const [filterMode, setFilterMode] = useState('');
   const [filterCodeType, setFilterCodeType] = useState('');

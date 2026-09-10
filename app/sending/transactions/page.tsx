@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Modal from '@/components/ui/Modal';
 import TransactionReceipt from '@/components/ui/TransactionReceipt';
 import { fmtCAD, fmtGHS, buildWhatsAppText } from '@/lib/utils/format';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 export default function TransactionsPage() {
   const { user } = useAuth();
@@ -20,6 +21,17 @@ export default function TransactionsPage() {
   const today = new Date().toISOString().slice(0, 10);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    setStartDate(latestDate);
+    setEndDate(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 

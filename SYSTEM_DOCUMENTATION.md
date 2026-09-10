@@ -490,7 +490,13 @@ All tellers must reach COMPLETED or APPROVED before the branch can close EOD (un
 
 ### Hook: `useReceivingServerDate`
 
-Client-side hook that fetches `ReceivingPoint.serverDate` for the logged-in teller's branch. Used by all receiving portal pages to initialize date filters and display the current business date badge.
+Client-side hook that fetches `ReceivingPoint.serverDate` for the logged-in teller's branch. Used across the receiving portal to display the current business date badge.
+
+### Hook: `useLatestTransactionDate`
+
+Date **filters** no longer open on the server date or the wall-clock date — both go stale. A branch that has not run EOD sits on an old business date, and an imported day-sheet carries the sending side's date, so screens opened empty with work waiting. Every date filter now seeds from `GET /api/transactions/latest-date`, the business date of the most recent transaction the caller can see (branch-scoped automatically, and narrowable by status so a pending screen lands on the last day with *pending* work).
+
+The value seeds the filter once on mount; the user is free to change it afterwards, and Reset returns to that date rather than to today.
 
 ### Admin Visibility
 
@@ -820,6 +826,7 @@ each row is checked against existing transactions for that branch and date
 ### Server Dates
 | Method | Path | Permission | Description |
 |---|---|---|---|
+| GET | `/api/transactions/latest-date` | Any | Business date of the most recent visible transaction; seeds date filters |
 | GET/PATCH | `/api/server-date` | SENDING_ADMIN | Get / set sending server date |
 | GET/PATCH | `/api/receiving/server-date` | RECEIVING_ADMIN | Get / set branch server date |
 

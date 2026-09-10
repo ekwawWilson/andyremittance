@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiClient, AdditionalTillReportEntry } from '@/lib/api-client';
 import { Card, CardContent } from '@/components/ui/Card';
 import ExportButtons from '@/components/ui/ExportButtons';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 function todayDate() {
   return new Date().toISOString().split('T')[0];
@@ -17,6 +18,17 @@ export default function AdditionalTillReportPage() {
   const today = todayDate();
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    setStartDate(latestDate);
+    setEndDate(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [transactionType, setTransactionType] = useState('IMMEDIATE');
   const [entries, setEntries] = useState<AdditionalTillReportEntry[]>([]);
   const [totalGHS, setTotalGHS] = useState(0);

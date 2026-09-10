@@ -821,6 +821,20 @@ class ApiClient {
     );
   }
 
+  /**
+   * The business date of the most recent transaction the caller can see.
+   * Date filters default to this so a screen never opens empty while work waits
+   * on a date that is neither today nor the branch's serverDate.
+   */
+  async getLatestTransactionDate(params?: { receivingPointId?: string; status?: string }) {
+    const query = new URLSearchParams();
+    if (params?.receivingPointId) query.set('receivingPointId', params.receivingPointId);
+    if (params?.status) query.set('status', params.status);
+    return this.request<{ latestDate: string | null; receivingPointId: string | null }>(
+      `/api/transactions/latest-date?${query}`
+    );
+  }
+
   // ─── Excel day-sheet import ────────────────────────────────────────────────
 
   /**

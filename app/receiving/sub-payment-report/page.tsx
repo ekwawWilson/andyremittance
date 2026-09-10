@@ -4,6 +4,7 @@ import { apiClient, SubPaymentReportEntry } from '@/lib/api-client';
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 function fmt(n: number) {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -18,6 +19,17 @@ export default function SubPaymentReportPage() {
   const today = todayDate();
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    setDateFrom(latestDate);
+    setDateTo(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [subPayments, setSubPayments] = useState<SubPaymentReportEntry[]>([]);
   const [totalDisbursed, setTotalDisbursed] = useState(0);
   const [isLoading, setIsLoading] = useState(true);

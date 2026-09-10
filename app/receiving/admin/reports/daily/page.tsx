@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { apiClient, Transaction } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 function fmtGHS(n: number) {
   return n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -52,6 +53,17 @@ export default function DailyTransactionReportPage() {
   const today = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    setStartDate(latestDate);
+    setEndDate(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [statusFilter, setStatusFilter] = useState('PAID,PARTIAL_PAYMENT,VOID,FLAGGED,SYNCED');
   const [codeTypeFilter, setCodeTypeFilter] = useState('');
   const [modeFilter, setModeFilter] = useState('');

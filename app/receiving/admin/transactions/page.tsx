@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiClient, Transaction } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 
 type ActionType = 'FLAGGED' | 'RESTORE';
 
@@ -41,6 +42,18 @@ export default function AdminTransactionsPage() {
   const firstOfMonth = today.slice(0, 7) + '-01';
   const [from, setFrom] = useState(firstOfMonth);
   const [to, setTo] = useState(today);
+  // Date filters open on the last date that actually has transactions —
+  // today's wall-clock date is empty whenever the data is not from today.
+  const { latestDate, resolved: latestResolved } = useLatestTransactionDate(today);
+  const [datesSeeded, setDatesSeeded] = useState(false);
+  useEffect(() => {
+    if (!latestResolved || datesSeeded) return;
+    // This screen is a month view: keep the range, anchored on the latest month.
+    setFrom(latestDate.slice(0, 7) + '-01');
+    setTo(latestDate);
+    setDatesSeeded(true);
+  }, [latestDate, latestResolved, datesSeeded]);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 

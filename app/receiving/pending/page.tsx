@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 import { printReceipt, printMultiReceiverReceipt } from '@/lib/print-receipt';
 import { exportToExcel, exportToPDF, SummaryItem } from '@/lib/utils/export';
 import { fmtGHS, fmtNum } from '@/lib/utils/format';
@@ -171,6 +172,11 @@ function buildPendingExportSummary(txs: Transaction[]): SummaryItem[] {
 export default function PendingPaymentsPage() {
   const { user } = useAuth();
   const { serverDate, loading: serverDateLoading } = useReceivingServerDate();
+  // Open on the last date that actually has pending work — the branch serverDate
+  // goes stale when EOD is not run, and imported sheets carry the sending side's date.
+  const { latestDate, loading: latestLoading } = useLatestTransactionDate(serverDate, {
+    status: 'SYNCED,PARTIAL_PAYMENT',
+  });
   const isTeller = user?.role === 'TELLER';
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -217,12 +223,12 @@ export default function PendingPaymentsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Initialise date filters once server date loads
+  // Initialise the date filters once we know the last date with pending work.
   useEffect(() => {
-    if (serverDateLoading || dateFrom) return;
-    setDateFrom(serverDate);
-    setDateTo(serverDate);
-  }, [serverDate, serverDateLoading]);
+    if (serverDateLoading || latestLoading || dateFrom) return;
+    setDateFrom(latestDate);
+    setDateTo(latestDate);
+  }, [latestDate, serverDateLoading, latestLoading]);
 
   const fetchPending = async () => {
     setIsLoading(true);
@@ -783,9 +789,9 @@ export default function PendingPaymentsPage() {
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
             </div>
 
-            {(search || modeFilter || codeTypeFilter || dateFrom !== serverDate || dateTo !== serverDate) && (
+            {(search || modeFilter || codeTypeFilter || dateFrom !== latestDate || dateTo !== latestDate) && (
               <button
-                onClick={() => { setSearch(''); setModeFilter(''); setCodeTypeFilter(''); setDateFrom(serverDate); setDateTo(serverDate); }}
+                onClick={() => { setSearch(''); setModeFilter(''); setCodeTypeFilter(''); setDateFrom(latestDate); setDateTo(latestDate); }}
                 className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors whitespace-nowrap flex items-center gap-1"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

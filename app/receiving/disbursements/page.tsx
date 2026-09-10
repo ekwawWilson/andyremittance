@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
+import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 import { printReceipt } from '@/lib/print-receipt';
 
 function fmt(n: number) {
@@ -40,17 +41,21 @@ function SummaryCard({ label, value, sub, color = 'text-gray-900' }: { label: st
 export default function DisbursementsPage() {
   const { user } = useAuth();
   const { serverDate, loading: serverDateLoading } = useReceivingServerDate();
+  // Open on the last date that actually has disbursements, not a stale branch date.
+  const { latestDate, loading: latestLoading } = useLatestTransactionDate(serverDate, {
+    status: 'PAID,PARTIAL_PAYMENT',
+  });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Initialise date filters once server date loads
+  // Initialise the date filters once we know the last date with disbursements.
   useEffect(() => {
-    if (serverDateLoading || dateFrom) return;
-    setDateFrom(serverDate);
-    setDateTo(serverDate);
-  }, [serverDate, serverDateLoading]);
+    if (serverDateLoading || latestLoading || dateFrom) return;
+    setDateFrom(latestDate);
+    setDateTo(latestDate);
+  }, [latestDate, serverDateLoading, latestLoading]);
 
   // Filters
   const [tellerFilter, setTellerFilter] = useState('');
@@ -286,8 +291,8 @@ export default function DisbursementsPage() {
                 className="px-2.5 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                 className="px-2.5 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
-              {(hasActiveFilter || dateFrom !== serverDate || dateTo !== serverDate) && (
-                <button onClick={() => { setDateFrom(serverDate); setDateTo(serverDate); setTellerFilter(''); setModeFilter(''); setCodeTypeFilter(''); setSearchQuery(''); }}
+              {(hasActiveFilter || dateFrom !== latestDate || dateTo !== latestDate) && (
+                <button onClick={() => { setDateFrom(latestDate); setDateTo(latestDate); setTellerFilter(''); setModeFilter(''); setCodeTypeFilter(''); setSearchQuery(''); }}
                   className="text-xs text-gray-500 hover:text-red-600 underline whitespace-nowrap">
                   Reset all
                 </button>
