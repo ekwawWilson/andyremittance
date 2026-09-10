@@ -835,6 +835,42 @@ class ApiClient {
     );
   }
 
+  // ─── Transaction change requests (reversal / edit / cancel) ───────────────
+
+  /** Ask for a disbursement to be reversed, or a transaction edited or cancelled. */
+  async raiseChangeRequest(payload: {
+    transactionId: string;
+    type: ChangeRequestType;
+    reason: string;
+    proposedChanges?: Record<string, unknown>;
+  }) {
+    return this.request<ChangeRequest>('/api/change-requests', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getChangeRequests(params?: { status?: string; receivingPointId?: string }) {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.receivingPointId) query.set('receivingPointId', params.receivingPointId);
+    return this.request<ChangeRequest[]>(`/api/change-requests?${query}`);
+  }
+
+  async approveChangeRequest(id: string, note?: string) {
+    return this.request<{ request: ChangeRequest; outcome: string }>(`/api/change-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async rejectChangeRequest(id: string, note: string) {
+    return this.request<ChangeRequest>(`/api/change-requests/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
   // ─── Excel day-sheet import ────────────────────────────────────────────────
 
   /**
@@ -1799,4 +1835,40 @@ export interface ImportResult {
   transactionDate: string;
   rateUsed: number;
   transactions: Array<{ excelRow: number; transactionCode: string; id: string }>;
+}
+
+
+// ─── Transaction change requests ─────────────────────────────────────────────
+
+export type ChangeRequestType = 'DISBURSEMENT_REVERSAL' | 'TRANSACTION_EDIT' | 'TRANSACTION_CANCEL';
+export type ChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ChangeRequest {
+  id: string;
+  transactionId: string;
+  type: ChangeRequestType;
+  reason: string;
+  proposedChanges: Record<string, unknown> | null;
+  snapshot: Record<string, unknown> | null;
+  requestedById: string;
+  requestedByName: string;
+  requestedAt: string;
+  status: ChangeRequestStatus;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  receivingPointId: string | null;
+  transaction?: {
+    id: string;
+    transactionCode: string;
+    status: string;
+    ghsAmount: number | string;
+    cadAmount: number | string;
+    receivingMode: string;
+    transactionDate: string;
+    paidAt: string | null;
+    paidByName: string | null;
+    sender: { firstName: string; lastName: string };
+    receiver: { firstName: string; lastName: string } | null;
+  };
 }

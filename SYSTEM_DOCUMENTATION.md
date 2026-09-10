@@ -147,6 +147,8 @@
 | `SYNC_TRANSACTIONS` | SENDING_ADMIN, ADMIN |
 | `MARK_PAID` | TELLER, MANAGER, RECEIVING_ADMIN, ADMIN |
 | `IMPORT_TRANSACTIONS` | RECEIVING_ADMIN, MANAGER, ADMIN |
+| `REQUEST_TRANSACTION_CHANGE` | TELLER, MANAGER, RECEIVING_ADMIN, ADMIN |
+| `APPROVE_TRANSACTION_CHANGE` | MANAGER, RECEIVING_ADMIN, ADMIN |
 | `CREATE_RECONCILIATION` | TELLER, MANAGER |
 | `APPROVE_RECONCILIATION` | MANAGER, RECEIVING_ADMIN, ADMIN |
 | `RECEIVING_EOD` | RECEIVING_ADMIN, MANAGER |
@@ -765,6 +767,53 @@ each row is checked against existing transactions for that branch and date
 
 ---
 
+## 16b. Reversals, Edits & Cancellations
+
+A teller who pays the wrong person cannot undo it: the cash has left the till and
+the branch payable has been settled. Instead they raise a **change request**,
+which records the intent and moves nothing. Only an approver can make the ledger
+move, and **never the person who raised it**.
+
+**Page:** `/receiving/admin/change-requests`
+**Permissions:** `REQUEST_TRANSACTION_CHANGE` (TELLER and above) ·
+`APPROVE_TRANSACTION_CHANGE` (MANAGER, RECEIVING_ADMIN, ADMIN)
+
+| Type | Effect on approval |
+|---|---|
+| `DISBURSEMENT_REVERSAL` | Cash back to the till, branch payable restored, status → SYNCED |
+| `TRANSACTION_EDIT` | Applies the proposed field changes (payout details only — never amounts) |
+| `TRANSACTION_CANCEL` | Reverses any disbursement first, then voids the transaction |
+
+### What a reversal does
+
+```
+Dr TELLER_TILL / ADDITIONAL_TILL   the cash returns to the drawer it left
+  Cr DISBURSE-EXPENSE              the expense is undone
+PAYABLE-GHS-{branch} += amount     the branch is owed the money again
+transaction → SYNCED               payable once more; paidAt/paidBy cleared
+SubPayment rows deleted            instalments belong to the payout being undone
+```
+
+Every disbursement leg recorded against the transaction is reversed, so a
+transaction paid in instalments is unwound in full. Journals are never edited or
+deleted — `JournalService.reverseJournalEntry` writes a mirrored counter-entry
+and marks the original `REVERSED`, leaving both the payment and its undoing on
+the record. `ADDITIONAL` transactions draw on `ADDITIONAL_TILL` and never touched
+the branch payable, so their reversal leaves it alone.
+
+### Guards
+
+- Only a `PAID` or `PARTIAL_PAYMENT` transaction can be reversed
+- One open request per transaction at a time
+- The approver must be someone other than the requester
+- A reason of at least 5 characters is required, and rejection requires one too
+- Branch-scoped: an approver only sees and acts on their own branch's requests
+
+Approval writes an `AuditLog` entry (`APPROVE_DISBURSEMENT_REVERSAL` and so on)
+carrying the reason, the requester, the pre-change snapshot and the outcome.
+
+---
+
 ## 17. API Route Reference
 
 ### Auth
@@ -827,6 +876,9 @@ each row is checked against existing transactions for that branch and date
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | GET | `/api/transactions/latest-date` | Any | Business date of the most recent visible transaction; seeds date filters |
+| POST/GET | `/api/change-requests` | REQUEST_TRANSACTION_CHANGE | Raise a reversal/edit/cancel request; list the approval queue |
+| POST | `/api/change-requests/[id]/approve` | APPROVE_TRANSACTION_CHANGE | Approve and carry out the change |
+| POST | `/api/change-requests/[id]/reject` | APPROVE_TRANSACTION_CHANGE | Decline; nothing changes |
 | GET/PATCH | `/api/server-date` | SENDING_ADMIN | Get / set sending server date |
 | GET/PATCH | `/api/receiving/server-date` | RECEIVING_ADMIN | Get / set branch server date |
 
@@ -923,6 +975,7 @@ each row is checked against existing transactions for that branch and date
 | `/receiving/till` | Till balance, statement, load from vault, denomination calculator, print slip |
 | `/receiving/reconciliation` | Daily recon form: denomination count, variance, sign-off |
 | `/receiving/admin/reconciliations` | Manager: approve/reject teller reconciliations |
+| `/receiving/admin/change-requests` | Manager: approve/reject disbursement reversals, edits and cancellations |
 | `/receiving/eod` | Close branch EOD; 4-KPI summary bar; teller status roll-up |
 | `/receiving/eod/history` | Historical branch EOD records |
 | `/receiving/sub-payment-report` | Partial payment history |

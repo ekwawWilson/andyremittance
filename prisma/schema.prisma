@@ -49,6 +49,9 @@ model User {
   journalEntries      JournalEntry[]        @relation("JournalCreatedBy")
   closedPeriods       AccountingPeriod[]    @relation("PeriodClosedBy")
 
+  changeRequestsRaised   TransactionChangeRequest[] @relation("ChangeRequestedBy")
+  changeRequestsReviewed TransactionChangeRequest[] @relation("ChangeReviewedBy")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -289,6 +292,9 @@ model Transaction {
 
   // Notifications
   notifications Notification[]
+
+  // Requests to reverse or amend this transaction after the fact
+  changeRequests TransactionChangeRequest[]
 
   // Audit
   createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
@@ -839,4 +845,64 @@ model SystemConfig {
   sendingServerDate DateTime @db.Date
 
   updatedAt DateTime @updatedAt
+}
+
+
+// ============================================
+// POST-HOC TRANSACTION CHANGES (reversal / edit)
+// ============================================
+
+enum ChangeRequestType {
+  DISBURSEMENT_REVERSAL // undo a payout: cash back to the till, payable restored
+  TRANSACTION_EDIT      // amend payout details on a transaction
+  TRANSACTION_CANCEL    // void a transaction that should never have existed
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A request to reverse or amend a transaction after it has been actioned.
+/// Nothing moves when the request is raised — the ledger only changes on approval,
+/// so a teller can never quietly undo their own disbursement.
+model TransactionChangeRequest {
+  id String @id @default(uuid())
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String
+
+  type   ChangeRequestType
+  reason String
+
+  /// For TRANSACTION_EDIT: the fields the requester wants changed.
+  proposedChanges Json?
+
+  /// What the transaction looked like when the request was raised, so an
+  /// approver can see exactly what they are agreeing to.
+  snapshot Json?
+
+  requestedBy     User     @relation("ChangeRequestedBy", fields: [requestedById], references: [id])
+  requestedById   String
+  requestedByName String
+  requestedAt     DateTime @default(now())
+
+  status         ChangeRequestStatus @default(PENDING)
+  reviewedBy     User?     @relation("ChangeReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById   String?
+  reviewedByName String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+
+  /// Branch scoping for the approval queue.
+  receivingPointId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([transactionId])
+  @@index([receivingPointId, status])
+  @@index([requestedById])
 }

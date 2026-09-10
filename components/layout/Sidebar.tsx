@@ -144,6 +144,7 @@ export const receivingNav: NavItem[] = [
     children: [
       { name: 'Transfer Approvals', href: '/receiving/admin/transfers',        icon: icons.money    },
       { name: 'Reconciliations',    href: '/receiving/admin/reconciliations',  icon: icons.chart    },
+      { name: 'Reversals & Edits',  href: '/receiving/admin/change-requests',  icon: icons.sync     },
       { name: 'Transactions',       href: '/receiving/admin/transactions',     icon: icons.document },
       { name: 'Daily Report',       href: '/receiving/admin/reports/daily',    icon: icons.chart    },
       { name: 'End of Day',         href: '/receiving/eod',                    icon: icons.document },

@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useReceivingServerDate } from '@/lib/hooks/useReceivingServerDate';
 import { useLatestTransactionDate } from '@/lib/hooks/useLatestTransactionDate';
 import { printReceipt } from '@/lib/print-receipt';
+import Modal from '@/components/ui/Modal';
 
 function fmt(n: number) {
   return n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -45,6 +46,34 @@ export default function DisbursementsPage() {
   const { latestDate, loading: latestLoading } = useLatestTransactionDate(serverDate, {
     status: 'PAID,PARTIAL_PAYMENT',
   });
+
+  // Reversal requests — a teller cannot undo their own payout, they ask for it.
+  const canRequestChange = user?.permissions?.includes('REQUEST_TRANSACTION_CHANGE');
+  const [reverseTx, setReverseTx] = useState<Transaction | null>(null);
+  const [reverseReason, setReverseReason] = useState('');
+  const [reverseError, setReverseError] = useState('');
+  const [reverseNotice, setReverseNotice] = useState('');
+  const [reverseSubmitting, setReverseSubmitting] = useState(false);
+
+  const submitReversal = async () => {
+    if (!reverseTx) return;
+    if (reverseReason.trim().length < 5) { setReverseError('Give a reason of at least 5 characters.'); return; }
+    setReverseSubmitting(true);
+    setReverseError('');
+    const res = await apiClient.raiseChangeRequest({
+      transactionId: reverseTx.id,
+      type: 'DISBURSEMENT_REVERSAL',
+      reason: reverseReason.trim(),
+    });
+    if (res.success) {
+      setReverseNotice(`Reversal requested for ${reverseTx.transactionCode} — awaiting approval.`);
+      setReverseTx(null);
+      setReverseReason('');
+    } else {
+      setReverseError(res.error ?? 'Could not raise the request.');
+    }
+    setReverseSubmitting(false);
+  };
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
@@ -376,6 +405,17 @@ export default function DisbursementsPage() {
                               </svg>
                             </button>
                           )}
+                          {canRequestChange && (
+                            <button
+                              onClick={() => { setReverseTx(t); setReverseReason(''); setReverseError(''); }}
+                              title="Request reversal"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a4 4 0 010 8h-1M3 10l4-4M3 10l4 4" />
+                              </svg>
+                            </button>
+                          )}
                           {subs.length > 0 && (
                             <button onClick={() => toggleExpand(t.id)}
                               className="text-xs text-amber-600 underline font-medium">
@@ -480,6 +520,17 @@ export default function DisbursementsPage() {
                                   </svg>
                                 </button>
                               ) : null}
+                              {canRequestChange && (
+                                <button
+                                  onClick={() => { setReverseTx(t); setReverseReason(''); setReverseError(''); }}
+                                  title="Request reversal"
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a4 4 0 010 8h-1M3 10l4-4M3 10l4 4" />
+                                  </svg>
+                                </button>
+                              )}
                             </td>
                           </tr>
                           {hasPartials && isOpen && (
@@ -561,6 +612,56 @@ export default function DisbursementsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reversal request — records intent only; a manager approves the money move */}
+      {reverseNotice && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {reverseNotice}{' '}
+          <a href="/receiving/admin/change-requests" className="underline font-medium">View approvals</a>
+        </div>
+      )}
+
+      <Modal isOpen={!!reverseTx} onClose={() => setReverseTx(null)} title="Request disbursement reversal">
+        {reverseTx && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-gray-50 p-3 text-sm">
+              <p className="font-mono font-bold text-blue-600">{reverseTx.transactionCode}</p>
+              <p className="mt-1 text-gray-700">
+                {reverseTx.receiver?.firstName} {reverseTx.receiver?.lastName} ·{' '}
+                <span className="font-semibold text-emerald-700">GHS {fmt(Number(reverseTx.ghsAmount))}</span>
+              </p>
+              {reverseTx.paidByName && (
+                <p className="mt-0.5 text-xs text-gray-400">Paid by {reverseTx.paidByName}</p>
+              )}
+            </div>
+
+            <p className="text-sm text-gray-600">
+              This does not move any money. A manager must approve it, and only then does the cash
+              return to the till and the transaction become payable again.
+            </p>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">Reason (required)</label>
+              <textarea
+                value={reverseReason}
+                onChange={(e) => setReverseReason(e.target.value)}
+                rows={3}
+                placeholder="e.g. paid to the wrong receiver, duplicate payout, customer returned the cash"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+
+            {reverseError && <p className="text-sm text-red-700">{reverseError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setReverseTx(null)}>Cancel</Button>
+              <Button onClick={() => void submitReversal()} isLoading={reverseSubmitting}>
+                Submit for approval
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

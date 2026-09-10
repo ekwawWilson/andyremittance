@@ -21,6 +21,8 @@ export const ALL_PERMISSION_KEYS = [
   'SYNC_TRANSACTIONS',
   'REPRINT_RECEIPT',
   'IMPORT_TRANSACTIONS',
+  'REQUEST_TRANSACTION_CHANGE',
+  'APPROVE_TRANSACTION_CHANGE',
   // Senders & Receivers
   'CREATE_SENDERS',
   'VIEW_SENDERS',
@@ -64,6 +66,8 @@ export const PERMISSION_CATEGORIES = {
     'SYNC_TRANSACTIONS',
     'REPRINT_RECEIPT',
     'IMPORT_TRANSACTIONS',
+    'REQUEST_TRANSACTION_CHANGE',
+    'APPROVE_TRANSACTION_CHANGE',
   ],
   'Senders & Receivers': [
     'CREATE_SENDERS',
@@ -108,6 +112,8 @@ export const PERMISSION_INFO: Record<string, { label: string; description: strin
   SYNC_TRANSACTIONS: { label: 'Sync Transactions', description: 'Trigger end-of-day sync to receiving' },
   REPRINT_RECEIPT: { label: 'Reprint Receipt', description: 'Print receipts for existing transactions' },
   IMPORT_TRANSACTIONS: { label: 'Import Day-Sheet', description: 'Upload the sending side Excel day-sheet and post it as synced transactions' },
+  REQUEST_TRANSACTION_CHANGE: { label: 'Request Reversal / Edit', description: 'Ask for a disbursement to be reversed, or a transaction edited or cancelled' },
+  APPROVE_TRANSACTION_CHANGE: { label: 'Approve Reversal / Edit', description: 'Approve or reject reversal, edit and cancellation requests' },
   CREATE_SENDERS: { label: 'Create Senders', description: 'Add new sender profiles' },
   VIEW_SENDERS: { label: 'View Senders', description: 'View sender information' },
   EDIT_SENDERS: { label: 'Edit Senders', description: 'Modify sender profiles' },
@@ -136,6 +142,8 @@ export type PermissionKey = (typeof ALL_PERMISSION_KEYS)[number];
 export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
   SUPER_ADMIN: [],
   RECEIVING_ADMIN: [
+    'APPROVE_TRANSACTION_CHANGE',
+    'REQUEST_TRANSACTION_CHANGE',
     'IMPORT_TRANSACTIONS',
     'MARK_PAID',
     'MANAGE_TELLER_TILL',
@@ -183,6 +191,8 @@ export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
     'MANAGE_CASH',
   ],
   ADMIN: [
+    'APPROVE_TRANSACTION_CHANGE',
+    'REQUEST_TRANSACTION_CHANGE',
     'IMPORT_TRANSACTIONS',
     'MANAGE_USERS',
     'MANAGE_EXCHANGE_RATES',
@@ -214,6 +224,8 @@ export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
     'MANAGE_CASH',
   ],
   MANAGER: [
+    'APPROVE_TRANSACTION_CHANGE',
+    'REQUEST_TRANSACTION_CHANGE',
     'IMPORT_TRANSACTIONS',
     'SYNC_TRANSACTIONS',
     'VIEW_ALL_TRANSACTIONS',
@@ -239,6 +251,7 @@ export const ROLE_DEFAULTS: Record<string, readonly string[]> = {
     'REPRINT_RECEIPT',
   ],
   TELLER: [
+    'REQUEST_TRANSACTION_CHANGE',
     'MARK_PAID',
     'MANAGE_TELLER_TILL',
     'CREATE_RECONCILIATION',
