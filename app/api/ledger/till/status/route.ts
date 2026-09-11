@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-response';
 import { requirePermission } from '@/lib/auth/permissions';
 import { LedgerService } from '@/lib/services/ledger.service';
 import prisma from '@/lib/db/prisma';
+import { branchBusinessDate } from '@/lib/services/till-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,8 @@ const ledgerService = new LedgerService();
 // GET /api/ledger/till/status — returns the teller's own till balance + statement
 //
 // Single-day mode  (default / backwards-compatible):
-//   ?date=YYYY-MM-DD   — statement for that day; omit for today
+//   ?date=YYYY-MM-DD   — statement for that day; omit for the branch's
+//                        current business date (NOT the wall-clock date)
 //
 // Period mode:
 //   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD — statement across the range
@@ -30,6 +32,17 @@ export async function GET(request: NextRequest) {
 
     const isPeriod = !!(startDateParam && endDateParam);
 
+    // Kicked off before anything awaits it so it overlaps the other work. Every
+    // query here is a round trip to eu-west-1 at ~1.3-2 s, so the endpoint's cost
+    // is almost entirely how many of them run one after another.
+    const utcToday = () => {
+      const n = new Date();
+      return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    };
+    const resolveBusinessDate: Promise<Date> = receivingPointId
+      ? branchBusinessDate(receivingPointId)
+      : Promise.resolve(utcToday());
+
     let dayStart: Date;
     let dayEnd: Date;
 
@@ -40,11 +53,15 @@ export async function GET(request: NextRequest) {
       dayStart = new Date(dateParam + 'T00:00:00.000Z');
       dayEnd   = new Date(dateParam + 'T23:59:59.999Z');
     } else {
-      const now = new Date();
-      dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      dayEnd = new Date(now);
-      dayEnd.setHours(23, 59, 59, 999);
+      // Default to the branch's business date, not the wall clock. Ledger entries
+      // are stamped with the business date at UTC midnight, so a browser opened on
+      // 11 Sept while the branch is still working 10 Sept would ask for a day with
+      // no entries and the reconciliation form would pre-fill with zeros.
+      //
+      // setHours() also built the window in local time, which shifts it off the
+      // UTC-midnight entries on any server that is not on UTC.
+      dayStart = await resolveBusinessDate;
+      dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
     }
 
     // Guard: period cannot be longer than 92 days (one quarter)
@@ -63,56 +80,50 @@ export async function GET(request: NextRequest) {
       return successResponse({ till: null, balance: 0, statement: [], vaults: [], priorClosing: null, isHistorical: !!dateParam });
     }
 
-    // For a single-day historical view, also fetch the reconciliation for that date
-    const reconciliationForDate = (!isPeriod && dateParam) ? await prisma.tellerReconciliation.findFirst({
-      where: {
-        tellerId: userId,
-        reconciliationDate: {
-          gte: new Date(dateParam + 'T00:00:00.000Z'),
-          lte: new Date(dateParam + 'T23:59:59.999Z'),
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, status: true, actualClosing: true, expectedClosing: true,
-        variance: true, openingBalance: true, paymentsMade: true, reconciliationDate: true,
-      },
-    }) : null;
-
-    const statement = await ledgerService.getLedgerStatement(till.id, dayStart, dayEnd);
-
-    // Return only vaults belonging to the teller's branch.
-    // If the user has no receivingPointId (e.g. SUPER_ADMIN testing), return all vaults.
+    // Everything below needs only till.id, so it all goes out together rather
+    // than one await at a time — this endpoint took ~11 s sequentially, which is
+    // long enough that the reconciliation form looks like it failed to pre-fill.
     const vaultWhere: Record<string, unknown> = { accountType: 'COMPANY_VAULT', isActive: true };
     if (receivingPointId) vaultWhere.receivingPointId = receivingPointId;
 
-    const vaults = await prisma.ledgerAccount.findMany({
-      where: vaultWhere,
-      select: { id: true, accountName: true, accountCode: true, balance: true },
-    });
+    const [reconciliationForDate, statement, vaults, lastApprovedRecon, currentBusinessDate] =
+      await Promise.all([
+        // For a single-day historical view, the reconciliation for that date.
+        (!isPeriod && dateParam)
+          ? prisma.tellerReconciliation.findFirst({
+              where: {
+                tellerId: userId,
+                reconciliationDate: {
+                  gte: new Date(dateParam + 'T00:00:00.000Z'),
+                  lte: new Date(dateParam + 'T23:59:59.999Z'),
+                },
+              },
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true, status: true, actualClosing: true, expectedClosing: true,
+                variance: true, openingBalance: true, paymentsMade: true, reconciliationDate: true,
+              },
+            })
+          : Promise.resolve(null),
+        ledgerService.getLedgerStatement(till.id, dayStart, dayEnd),
+        // Only vaults at the teller's branch; all of them for an unscoped admin.
+        prisma.ledgerAccount.findMany({
+          where: vaultWhere,
+          select: { id: true, accountName: true, accountCode: true, balance: true },
+        }),
+        // The last resolved reconciliation gives the opening balance for the form.
+        prisma.tellerReconciliation.findFirst({
+          where: { tellerId: userId, status: { in: ['COMPLETED', 'APPROVED'] } },
+          orderBy: [{ reconciliationDate: 'desc' }, { createdAt: 'desc' }],
+          select: { actualClosing: true, reconciliationDate: true },
+        }),
+        resolveBusinessDate,
+      ]);
 
-    // Look up the most recent resolved reconciliation for this teller to derive
-    // the opening balance for today's reconciliation form.
-    const lastApprovedRecon = await prisma.tellerReconciliation.findFirst({
-      where: {
-        tellerId: userId,
-        status: { in: ['COMPLETED', 'APPROVED'] },
-      },
-      orderBy: [
-        { reconciliationDate: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      select: { actualClosing: true, reconciliationDate: true },
-    });
-
-    // Today's pending reconciliation status (for till page status indicator)
-    const todayStart2 = new Date();
-    todayStart2.setHours(0, 0, 0, 0);
+    // Judged against the branch's business date, not the wall clock — otherwise a
+    // teller working past midnight is told they have not reconciled yet.
     const todayRecon = await prisma.tellerReconciliation.findFirst({
-      where: {
-        tellerId: userId,
-        reconciliationDate: { gte: todayStart2 },
-      },
+      where: { tellerId: userId, reconciliationDate: { gte: currentBusinessDate } },
       orderBy: { createdAt: 'desc' },
       select: { id: true, status: true, variance: true, actualClosing: true },
     });

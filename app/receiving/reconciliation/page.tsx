@@ -65,7 +65,7 @@ function ReconciliationBadge({ status }: { status: string }) {
 
 export default function ReconciliationPage() {
   const { user } = useAuth();
-  const { serverDate } = useReceivingServerDate();
+  const { serverDate, loading: serverDateLoading } = useReceivingServerDate();
   const [reconciliations, setReconciliations] = useState<Reconciliation[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +85,14 @@ export default function ReconciliationPage() {
   };
 
   const prefillFromTill = async () => {
-    const res = await apiClient.getTillStatus();
+    // Ask for the branch's business date explicitly, but only once the hook has
+    // actually fetched it — until then it holds the browser's date as a
+    // placeholder, and sending that would reintroduce the very bug this avoids.
+    // With no date the endpoint falls back to the branch date server-side, which
+    // is also correct, so either path is safe.
+    const res = await apiClient.getTillStatus(
+      serverDateLoading ? undefined : { date: serverDate }
+    );
     if (res.success && res.data) {
       if (res.data.todayReconciliation && res.data.todayReconciliation.status !== 'REJECTED') {
         setTillStatus(res.data);
@@ -101,10 +108,12 @@ export default function ReconciliationPage() {
   };
 
   useEffect(() => {
+    // Re-run once the branch business date resolves, so the pre-fill reflects the
+    // branch's day rather than whatever the placeholder was on first render.
     if (user) {
       fetchRecons();
     }
-  }, [user]);
+  }, [user, serverDate, serverDateLoading]);
 
   const ledgerStatement = tillStatus?.statement ?? [];
   const openingBalance = Number(tillStatus?.priorClosing?.amount ?? 0);
