@@ -1,8 +1,10 @@
 import type { Transaction } from '@/lib/api-client';
 
-const COMPANY_NAME    = process.env.NEXT_PUBLIC_COMPANY_NAME    ?? 'PETROS';
-const COMPANY_TAGLINE = process.env.NEXT_PUBLIC_COMPANY_TAGLINE ?? 'Canada–Ghana';
-const COMPANY_EMAIL   = process.env.NEXT_PUBLIC_COMPANY_EMAIL   ?? 'admin@petrosremittance.com';
+// The receipt is issued by the trading company, which is not the same string as
+// the application name (PETROS) shown in the UI chrome.
+const COMPANY_NAME    = process.env.NEXT_PUBLIC_RECEIPT_COMPANY_NAME ?? 'ANDY D ENTERPRISE';
+const COMPANY_TAGLINE = process.env.NEXT_PUBLIC_COMPANY_TAGLINE      ?? 'Kantamanto';
+const COMPANY_EMAIL   = process.env.NEXT_PUBLIC_COMPANY_EMAIL        ?? 'admin@andydenterprise.com';
 
 export interface ReceiptPrintOptions {
   amountPaidGHS?: number;
@@ -85,12 +87,11 @@ function buildCopy(
 
     <div class="title-row">
       <span class="title">${options.title ?? 'PAYMENT RECEIPT'}</span>
-      <span class="code">${t.transactionCode}</span>
     </div>
 
-    <!-- Meta: date/teller + sender/receiver in two columns -->
+    <!-- Meta: date only; sender/receiver follow in two columns -->
     <table class="meta-table" style="margin-top:3pt">
-      <tr><td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td><td style="width:8pt"></td><td style="color:#6b7280;width:28%">Teller</td><td style="font-weight:600">${t.paidByName || '—'}</td></tr>
+      <tr><td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td></tr>
     </table>
 
     <div class="two-col">
@@ -98,7 +99,6 @@ function buildCopy(
         <div class="section-label">SENDER</div>
         <table class="meta-table">
           <tr><td>Name</td><td>${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}</td></tr>
-          <tr><td>Country</td><td>${t.sender?.country || 'Canada'}</td></tr>
         </table>
       </div>
       <div>
@@ -115,11 +115,9 @@ function buildCopy(
     <div class="amount-box">
       <div class="amount-label">${options.amountLabel ?? 'AMOUNT TO RECEIVE'}</div>
       <div class="amount-value">GHS ${fmt(amountPaid)}</div>
-      <div class="amount-rate">@ CAD 1 = GHS ${Number(t.exchangeRateUsed).toFixed(4)} &nbsp;&nbsp;|&nbsp;&nbsp; Sent: CAD ${fmt(Number(t.cadAmount))}</div>
       ${isMomo ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(grossAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoCharge)}</span></div>` : ''}
     </div>
 
-    ${notes ? `<div class="notes">Note: ${notes}</div>` : ''}
 
     <div class="footer">
       <p>Thank you for choosing ${COMPANY_NAME} &nbsp;·&nbsp; enquiries: <strong>${COMPANY_EMAIL}</strong></p>
@@ -175,16 +173,10 @@ export function printMultiReceiverReceipt(
 
     <div class="title-row">
       <span class="title">MULTI-RECEIVER PAYMENT</span>
-      <span class="code">${t.transactionCode}</span>
     </div>
 
     <table class="meta-table" style="margin-top:3pt">
-      <tr>
-        <td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td>
-        <td style="width:8pt"></td>
-        <td style="color:#6b7280;width:28%">Teller</td>
-        <td style="font-weight:600">${t.paidByName || '—'}</td>
-      </tr>
+      <tr><td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td></tr>
     </table>
 
     <div class="two-col">
@@ -192,7 +184,6 @@ export function printMultiReceiverReceipt(
         <div class="section-label">SENDER</div>
         <table class="meta-table">
           <tr><td>Name</td><td>${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}</td></tr>
-          <tr><td>Country</td><td>${t.sender?.country || 'Canada'}</td></tr>
         </table>
       </div>
       <div>
@@ -207,11 +198,9 @@ export function printMultiReceiverReceipt(
     <div class="amount-box">
       <div class="amount-label">AMOUNT TO RECEIVE</div>
       <div class="amount-value">GHS ${fmt(netAmountAlloc)}</div>
-      <div class="amount-rate">@ CAD 1 = GHS ${Number(t.exchangeRateUsed).toFixed(4)} &nbsp;&nbsp;|&nbsp;&nbsp; Sent: CAD ${fmt(Number(t.cadAmount))}</div>
       ${isMomoMulti ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(alloc.ghsAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoChargeAlloc)}</span></div>` : ''}
     </div>
 
-    ${alloc.notes ? `<div class="notes">Note: ${alloc.notes}</div>` : ''}
 
     <div class="footer">
       <p>Thank you for choosing ${COMPANY_NAME} &nbsp;·&nbsp; enquiries: <strong>${COMPANY_EMAIL}</strong></p>
@@ -229,7 +218,7 @@ export function printMultiReceiverReceipt(
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Receipt — ${t.transactionCode}</title>
+<title>Payment Receipt</title>
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -629,7 +618,7 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Receipt — ${t.transactionCode}</title>
+<title>Payment Receipt</title>
 <style>
   /*
    * One A4 sheet, portrait. Two half-page copies stacked vertically.
