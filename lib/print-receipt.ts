@@ -61,7 +61,7 @@ function buildCopy(
       : receivingMode === 'MOMO'
       ? `<tr><td>MoMo No.</td><td>${(options.momoNumber ?? t.momoNumber) || '—'}</td></tr>
          <tr><td>MoMo Name</td><td>${(options.momoName ?? t.momoName) || '—'}</td></tr>`
-      : `<tr><td>Phone</td><td>${(options.cashPhoneNumber ?? receiverPhone) || '—'}</td></tr>`;
+      : `<tr><td>Phone</td><td>${(options.cashPhoneNumber ?? t.cashPhoneNumber ?? receiverPhone) || '—'}</td></tr>`;
 
   return `
   <section class="receipt">
@@ -78,7 +78,6 @@ function buildCopy(
       </svg>
       <div>
         <div class="company-name">${COMPANY_NAME}</div>
-        <div class="company-sub">${COMPANY_TAGLINE} &nbsp;·&nbsp; ${branchName}</div>
       </div>
     </div>
 
@@ -108,15 +107,14 @@ function buildCopy(
     </div>
 
     <div class="amount-box">
-      <div class="amount-label">${options.amountLabel ?? 'AMOUNT TO RECEIVE'}</div>
       <div class="amount-value">GHS ${fmt(amountPaid)}</div>
       ${isMomo ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(grossAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoCharge)}</span></div>` : ''}
     </div>
 
 
     <div class="sig-row">
-      <div class="sig-box">Customer Signature</div>
-      <div class="sig-box">Authorised Signature</div>
+      <div class="sig-box"><div class="sig-line"></div><div class="sig-label">Customer Signature</div></div>
+      <div class="sig-box"><div class="sig-line"></div><div class="sig-label">Authorised Signature</div></div>
     </div>
   </section>`;
 }
@@ -156,7 +154,6 @@ export function printMultiReceiverReceipt(
       </svg>
       <div>
         <div class="company-name">${COMPANY_NAME}</div>
-        <div class="company-sub">${COMPANY_TAGLINE} &nbsp;·&nbsp; ${branchName}</div>
       </div>
     </div>
 
@@ -187,15 +184,14 @@ export function printMultiReceiverReceipt(
     </div>
 
     <div class="amount-box">
-      <div class="amount-label">AMOUNT TO RECEIVE</div>
       <div class="amount-value">GHS ${fmt(netAmountAlloc)}</div>
       ${isMomoMulti ? `<div class="momo-fee-row"><span class="momo-fee-label">Gross Amount</span><span class="momo-fee-val">GHS ${fmt(alloc.ghsAmount)}</span></div><div class="momo-fee-row"><span class="momo-fee-label">MoMo Charges (2%)</span><span class="momo-fee-val momo-fee-deduct">− GHS ${fmt(momoChargeAlloc)}</span></div>` : ''}
     </div>
 
 
     <div class="sig-row">
-      <div class="sig-box">Customer Signature</div>
-      <div class="sig-box">Authorised Signature</div>
+      <div class="sig-box"><div class="sig-line"></div><div class="sig-label">Customer Signature</div></div>
+      <div class="sig-box"><div class="sig-line"></div><div class="sig-label">Authorised Signature</div></div>
     </div>
   </section>
   ${idx < allocations.length - 1 ? '<div class="cut-line"><span class="cut-text">✂ &nbsp; cut here</span></div>' : ''}`;
@@ -307,10 +303,11 @@ export function printMultiReceiverReceipt(
     margin-top: auto; padding-top: 4pt; border-top: 0.5pt dashed #d1d5db;
     font-size: 7pt; color: #6b7280; text-align: center; line-height: 1.5;
   }
-  .sig-row { display: flex; gap: 10pt; margin-top: 5pt; }
-  .sig-box {
-    flex: 1; border-top: 0.8pt solid #374151; padding-top: 2pt;
-    font-size: 7pt; color: #6b7280; text-align: center;
+  .sig-row { display: flex; gap: 10pt; margin-top: 18pt; }
+  .sig-box { flex: 1; }
+  .sig-line { height: 13mm; border-bottom: 0.8pt solid #374151; }
+  .sig-label {
+    padding-top: 2pt; font-size: 7pt; color: #6b7280; text-align: center;
   }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -482,7 +479,6 @@ export function printMultiReceiverStatement(
       </svg>
       <div>
         <div class="company-name">${COMPANY_NAME}</div>
-        <div class="company-sub">${COMPANY_TAGLINE} &nbsp;·&nbsp; ${branchName}</div>
       </div>
     </div>
     <div class="doc-title">
@@ -737,10 +733,11 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
   }
 
   /* Signatures */
-  .sig-row { display: flex; gap: 10pt; margin-top: 5pt; }
-  .sig-box {
-    flex: 1; border-top: 0.8pt solid #374151; padding-top: 2pt;
-    font-size: 7pt; color: #6b7280; text-align: center;
+  .sig-row { display: flex; gap: 10pt; margin-top: 18pt; }
+  .sig-box { flex: 1; }
+  .sig-line { height: 13mm; border-bottom: 0.8pt solid #374151; }
+  .sig-label {
+    padding-top: 2pt; font-size: 7pt; color: #6b7280; text-align: center;
   }
 
   @media print {
