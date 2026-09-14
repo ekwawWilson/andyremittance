@@ -61,8 +61,7 @@ function buildCopy(
       : receivingMode === 'MOMO'
       ? `<tr><td>MoMo No.</td><td>${(options.momoNumber ?? t.momoNumber) || '—'}</td></tr>
          <tr><td>MoMo Name</td><td>${(options.momoName ?? t.momoName) || '—'}</td></tr>`
-      : `<tr><td>Phone</td><td>${(options.cashPhoneNumber ?? receiverPhone) || '—'}</td></tr>
-         <tr><td>Ghana Card</td><td>${(options.cashGhanaCardNumber ?? t.cashGhanaCardNumber) || '—'}</td></tr>`;
+      : `<tr><td>Phone</td><td>${(options.cashPhoneNumber ?? receiverPhone) || '—'}</td></tr>`;
 
   return `
   <section class="receipt">
@@ -94,22 +93,18 @@ function buildCopy(
       <tr><td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td></tr>
     </table>
 
-    <div class="two-col">
-      <div>
-        <div class="section-label">SENDER</div>
-        <table class="meta-table">
-          <tr><td>Name</td><td>${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}</td></tr>
-        </table>
-      </div>
-      <div>
-        <div class="section-label">RECEIVER</div>
-        <table class="meta-table">
-          <tr><td>Name</td><td>${receiverName || '—'}</td></tr>
-          ${receiverPhone ? `<tr><td>Phone</td><td>${receiverPhone}</td></tr>` : ''}
-          <tr><td>Mode</td><td>${modeLabel(receivingMode)}</td></tr>
-          ${modeDetails}
-        </table>
-      </div>
+    <div class="party">
+      <div class="section-label">SENDER</div>
+      <div class="party-name">${`${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}`.trim() || '—'}</div>
+    </div>
+
+    <div class="party">
+      <div class="section-label">RECEIVER</div>
+      <div class="party-name">${receiverName || '—'}</div>
+      <table class="meta-table">
+        <tr><td>Mode</td><td>${modeLabel(receivingMode)}</td></tr>
+        ${modeDetails}
+      </table>
     </div>
 
     <div class="amount-box">
@@ -119,13 +114,9 @@ function buildCopy(
     </div>
 
 
-    <div class="footer">
-      <p>Thank you for choosing ${COMPANY_NAME} &nbsp;·&nbsp; enquiries: <strong>${COMPANY_EMAIL}</strong></p>
-    </div>
-
     <div class="sig-row">
-      <div class="sig-box">Receiver's Signature</div>
-      <div class="sig-box">Teller's Signature</div>
+      <div class="sig-box">Customer Signature</div>
+      <div class="sig-box">Authorised Signature</div>
     </div>
   </section>`;
 }
@@ -202,13 +193,9 @@ export function printMultiReceiverReceipt(
     </div>
 
 
-    <div class="footer">
-      <p>Thank you for choosing ${COMPANY_NAME} &nbsp;·&nbsp; enquiries: <strong>${COMPANY_EMAIL}</strong></p>
-    </div>
-
     <div class="sig-row">
-      <div class="sig-box">Receiver's Signature</div>
-      <div class="sig-box">Teller's Signature</div>
+      <div class="sig-box">Customer Signature</div>
+      <div class="sig-box">Authorised Signature</div>
     </div>
   </section>
   ${idx < allocations.length - 1 ? '<div class="cut-line"><span class="cut-text">✂ &nbsp; cut here</span></div>' : ''}`;
@@ -621,63 +608,49 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
 <title>Payment Receipt</title>
 <style>
   /*
-   * One A4 sheet, portrait. Two half-page copies stacked vertically.
-   * Each copy = 148mm wide × ~138mm tall (half of 297mm minus cut margin).
-   * Print → cut along the dashed line → hand customer copy to customer.
+   * One A5 sheet, landscape (210 x 148mm) = two A6 portrait copies side by side.
+   * Each copy is exactly A6: 105 x 148mm. Print, cut down the vertical dashed
+   * line, hand the left half to the customer and file the right.
    */
   @page {
-    size: A4 portrait;
+    size: A5 landscape;
     margin: 0;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 9pt;
+    font-size: 8pt;
     color: #111;
     background: #fff;
     width: 210mm;
   }
 
-  /* Wrapper: two halves stacked on one A4 page */
+  /* Wrapper: the two A6 halves, side by side */
   .page {
     width: 210mm;
-    height: 297mm;
+    height: 148mm;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
   }
 
-  /* Cut line between the two halves */
+  /* Vertical cut line down the middle of the sheet */
   .cut-line {
-    width: 100%;
-    height: 6mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6pt;
+    width: 0;
+    height: 148mm;
+    border-left: 1pt dashed #9ca3af;
     flex-shrink: 0;
   }
-  .cut-line::before, .cut-line::after {
-    content: '';
-    flex: 1;
-    border-top: 1pt dashed #9ca3af;
-  }
-  .cut-text {
-    font-size: 6.5pt;
-    color: #9ca3af;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
+  .cut-text { display: none; }
 
-  /* Each copy occupies exactly half the A4 page */
+  /* Each copy is exactly one A6 portrait half */
   .receipt {
-    width: 210mm;
-    height: calc((297mm - 6mm) / 2);
-    padding: 6mm 12mm 5mm;
+    width: 105mm;
+    height: 148mm;
+    padding: 6mm 6mm 5mm;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 3.5pt;
+    gap: 2.5pt;
     overflow: hidden;
   }
 
@@ -696,8 +669,8 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
   }
 
   /* Header */
-  .header { display: flex; align-items: center; gap: 8pt; padding-bottom: 3pt; }
-  .company-name   { font-size: 11pt; font-weight: 900; letter-spacing: 0.02em; color: #1e3a8a; }
+  .header { display: flex; align-items: center; gap: 6pt; padding-bottom: 2pt; }
+  .company-name   { font-size: 10pt; font-weight: 900; letter-spacing: 0.02em; color: #1e3a8a; }
   .company-sub    { font-size: 7pt; color: #6b7280; }
   .company-branch { font-size: 7pt; color: #374151; font-weight: 600; margin-top: 1pt; }
 
@@ -719,6 +692,12 @@ export function printReceipt(t: Transaction, branchName: string, options: Receip
   .two-col > div { flex: 1; }
 
   /* Tables */
+  /* Sender / receiver stacked, name shown without a field label */
+  .party { margin-top: 2pt; }
+  .party-name {
+    font-size: 10pt; font-weight: 700; color: #111; line-height: 1.25;
+    margin: 1pt 0 1pt;
+  }
   .section-label {
     font-size: 6.5pt; font-weight: 700; letter-spacing: 0.08em; color: #6b7280;
     text-transform: uppercase; margin-top: 4pt; margin-bottom: 1.5pt;
