@@ -83,10 +83,6 @@ function buildCopy(
 
     <div class="divider"></div>
 
-    <div class="title-row">
-      <span class="title">${options.title ?? 'PAYMENT RECEIPT'}</span>
-    </div>
-
     <!-- Meta: date only; sender/receiver follow in two columns -->
     <table class="meta-table" style="margin-top:3pt">
       <tr><td>Date</td><td>${dateStr} &nbsp; ${timeStr}</td></tr>
