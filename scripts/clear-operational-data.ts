@@ -69,6 +69,8 @@ async function main() {
     ['CashTransferRequest',  () => prisma.cashTransferRequest.deleteMany()],
     ['TellerReconciliation', () => prisma.tellerReconciliation.deleteMany()],
     ['ReceivingEodRecord',   () => prisma.receivingEodRecord.deleteMany()],
+    // Reversal / edit requests point at transactions, so they go first.
+    ['TransactionChangeRequest', () => prisma.transactionChangeRequest.deleteMany()],
     ['Transaction',          () => prisma.transaction.deleteMany()],
     ['EndOfDayRecord',       () => prisma.endOfDayRecord.deleteMany()],
     ['Receiver',             () => prisma.receiver.deleteMany()],
