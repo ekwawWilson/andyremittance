@@ -1135,6 +1135,8 @@ export interface DashboardStats {
     totalTransactions: number;
     pendingTransactions: number;
     syncedTransactions: number;
+    /** GHS still owed across all unpaid transactions, net of part-payments. */
+    pendingGHS: number;
     paidTransactions: number;
     cancelledTransactions: number;
     todayTransactions: number;

@@ -42,25 +42,28 @@ export async function GET(request: NextRequest) {
       if (endDate) where.transactionDate.lte = new Date(endDate);
     }
 
-    // The "today" panel follows the configured business date, but falls back to the
-    // most recent date that actually has transactions when that date is empty.
-    // Without this the panel reads zero whenever the business date has moved past
-    // the data — a branch that closed EOD, or a day-sheet carrying an older date —
-    // which makes a working dashboard look broken.
-    const [config, latestTx] = await Promise.all([
+    // "Today" is the business date, full stop — never the wall clock, and never
+    // the most recent date that happens to have data. A branch showing yesterday's
+    // figures under a "today" heading is worse than showing an honest zero.
+    //
+    // Which business date depends on who is asking: a branch-scoped view follows
+    // that branch's own ReceivingPoint.serverDate, since each branch closes its
+    // day independently. Company-wide views follow the sending server date.
+    const [config, branch] = await Promise.all([
       prisma.systemConfig.findFirst(),
-      prisma.transaction.aggregate({ where, _max: { transactionDate: true } }),
+      receivingPointId
+        ? prisma.receivingPoint.findUnique({
+            where: { id: receivingPointId },
+            select: { serverDate: true },
+          })
+        : Promise.resolve(null),
     ]);
 
-    const configuredStr = config?.sendingServerDate
-      ? new Date(config.sendingServerDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
-    const latestStr = latestTx._max.transactionDate?.toISOString().split('T')[0] ?? null;
-
-    // Never look past the newest transaction — there is nothing there to count.
-    const businessDateStr =
-      latestStr && latestStr < configuredStr ? latestStr : configuredStr;
-    const usingLatestActivity = businessDateStr !== configuredStr;
+    const businessDateStr = branch?.serverDate
+      ? new Date(branch.serverDate).toISOString().split('T')[0]
+      : config?.sendingServerDate
+        ? new Date(config.sendingServerDate).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
 
     const todayDate = new Date(`${businessDateStr}T00:00:00.000Z`);
     const tomorrowDate = new Date(todayDate);
@@ -90,6 +93,7 @@ export async function GET(request: NextRequest) {
       todayStatusGroups,
       recentTransactions,
       vaults,
+      partialPaidOut,
     ] = await Promise.all([
       prisma.transaction.groupBy({
         by: ['status'],
@@ -131,11 +135,20 @@ export async function GET(request: NextRequest) {
         },
         include: { receivingPoint: { select: { name: true, code: true } } },
       }),
+      // Part-paid transactions still carry their full ghsAmount, so the
+      // instalments already handed over have to come off the outstanding figure.
+      prisma.subPayment.aggregate({
+        _sum: { ghsAmount: true },
+        where: {
+          transaction: { ...where, status: 'PARTIAL_PAYMENT' },
+        },
+      }),
     ]);
 
     let totalTransactions = 0;
     let pendingTransactions = 0;
     let syncedTransactions = 0;
+    let syncedGHS = 0;
     let paidTransactions = 0;
     let allCAD = 0;
     let allGHS = 0;
@@ -144,9 +157,15 @@ export async function GET(request: NextRequest) {
       allCAD += Number(g._sum.cadAmount ?? 0);
       allGHS += Number(g._sum.ghsAmount ?? 0);
       if (g.status === 'PENDING') pendingTransactions = g._count;
-      else if (g.status === 'SYNCED' || g.status === 'PARTIAL_PAYMENT') syncedTransactions += g._count;
+      else if (g.status === 'SYNCED' || g.status === 'PARTIAL_PAYMENT') {
+        syncedTransactions += g._count;
+        syncedGHS += Number(g._sum.ghsAmount ?? 0);
+      }
       else if (g.status === 'PAID') paidTransactions = g._count;
     }
+
+    // What is still owed to receivers, whatever date it arrived.
+    const pendingGHS = Math.max(0, syncedGHS - Number(partialPaidOut._sum.ghsAmount ?? 0));
 
     let todayCount = 0;
     let todayPending = 0;
@@ -169,15 +188,16 @@ export async function GET(request: NextRequest) {
         totalTransactions,
         pendingTransactions,
         syncedTransactions,
+        /** GHS still owed across every unpaid transaction, net of instalments. */
+        pendingGHS,
         paidTransactions,
         cancelledTransactions,
         todayTransactions: todayCount,
         totalCAD: allCAD,
         totalGHS: allGHS,
       },
-      /** The date the "today" panel covers, and whether it fell back to it. */
+      /** The business date the "today" figures cover. */
       businessDate: businessDateStr,
-      usingLatestActivity,
       today: {
         count: todayCount,
         pending: todayPending,

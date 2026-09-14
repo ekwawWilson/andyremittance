@@ -33,7 +33,12 @@ export default function ReceivingDashboard() {
 
   const today = stats?.today;
   const totalVaultBalance = stats?.vaults?.reduce((sum, v) => sum + Number(v.balance), 0) ?? 0;
-  const todayPending = today?.synced ?? 0;
+
+  // Pending is everything still owed to a receiver, whatever day it arrived —
+  // money from last week is just as outstanding as money from this morning.
+  // The other three follow the branch's business date.
+  const totalPending = stats?.summary?.syncedTransactions ?? 0;
+  const pendingGHS = stats?.summary?.pendingGHS ?? 0;
   const todayPaid = today?.paid ?? 0;
   const todayTotal = today?.count ?? 0;
   const todayGHS = today?.totalGHS ?? 0;
@@ -72,9 +77,10 @@ export default function ReceivingDashboard() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Pending',     value: todayPending, note: 'awaiting disbursement',      color: todayPending > 0 ? 'text-amber-600' : 'text-gray-900' },
+          { label: 'Pending',      value: totalPending,            note: 'awaiting disbursement', color: totalPending > 0 ? 'text-amber-600' : 'text-gray-900' },
+          { label: 'Pending value', value: `GHS ${fmt(pendingGHS)}`, note: 'still owed, all dates', color: pendingGHS > 0 ? 'text-amber-600' : 'text-gray-900' },
           { label: 'Paid today',  value: todayPaid,    note: `${disbursementRate}% of today`, color: 'text-emerald-600' },
           { label: 'Total today', value: todayTotal,   note: 'transactions received',      color: 'text-gray-900'   },
           { label: "Today's GHS", value: `GHS ${fmt(todayGHS)}`, note: 'total value',      color: 'text-gray-900'   },
@@ -139,14 +145,14 @@ export default function ReceivingDashboard() {
         </div>
         <div className="flex justify-between text-xs text-gray-400">
           <span>{todayPaid} paid</span>
-          <span>{todayPending} pending · {todayTotal} total</span>
+          <span>{totalPending} pending · {todayTotal} total</span>
         </div>
       </div>
 
       {/* Quick links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {[
-          { href: '/receiving/pending',        label: 'Pending Payments',    badge: todayPending > 0 ? todayPending : null },
+          { href: '/receiving/pending',        label: 'Pending Payments',    badge: totalPending > 0 ? totalPending : null },
           { href: '/receiving/till',           label: 'My Till',             badge: null },
           { href: '/receiving/reconciliation', label: 'Reconciliation',      badge: null },
           { href: '/receiving/disbursements',  label: 'Disbursement History',badge: null },
