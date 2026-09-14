@@ -39,6 +39,15 @@ export default function ReceivingDashboard() {
   // The other three follow the branch's business date.
   const totalPending = stats?.summary?.syncedTransactions ?? 0;
   const pendingGHS = stats?.summary?.pendingGHS ?? 0;
+
+  // The headline figures cover the latest date that actually has transfers,
+  // which normally trails the business date because day-sheets are keyed in
+  // after the fact. Label them with that date rather than calling them "today".
+  const figuresDate = stats?.businessDate ?? null;
+  const trailing = stats?.usingLatestActivity ?? false;
+  const shortDate = (d: string | null) =>
+    d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GH', { day: 'numeric', month: 'short' }) : '';
+  const dayLabel = figuresDate ? shortDate(figuresDate) : 'today';
   const todayPaid = today?.paid ?? 0;
   const todayTotal = today?.count ?? 0;
   const todayGHS = today?.totalGHS ?? 0;
@@ -62,7 +71,17 @@ export default function ReceivingDashboard() {
         </div>
         <div className="flex items-center gap-2">
           {!dateLoading && (
-            <span className="text-xs text-gray-400">{fmtDate(serverDate)}</span>
+            <span className="text-xs text-gray-400">
+              {fmtDate(serverDate)}
+              {trailing && figuresDate && (
+                <span
+                  className="ml-2 text-amber-600"
+                  title="Day-sheets carry the sending side's date, so the newest transfers sit before the branch's business date."
+                >
+                  · figures to {shortDate(figuresDate)}
+                </span>
+              )}
+            </span>
           )}
           <button
             onClick={loadStats}
@@ -81,9 +100,9 @@ export default function ReceivingDashboard() {
         {[
           { label: 'Pending',      value: totalPending,            note: 'awaiting disbursement', color: totalPending > 0 ? 'text-amber-600' : 'text-gray-900' },
           { label: 'Pending value', value: `GHS ${fmt(pendingGHS)}`, note: 'still owed, all dates', color: pendingGHS > 0 ? 'text-amber-600' : 'text-gray-900' },
-          { label: 'Paid today',  value: todayPaid,    note: `${disbursementRate}% of today`, color: 'text-emerald-600' },
-          { label: 'Total today', value: todayTotal,   note: 'transactions received',      color: 'text-gray-900'   },
-          { label: "Today's GHS", value: `GHS ${fmt(todayGHS)}`, note: 'total value',      color: 'text-gray-900'   },
+          { label: `Paid ${dayLabel}`,  value: todayPaid,  note: `${disbursementRate}% of that day`,  color: 'text-emerald-600' },
+          { label: `Total ${dayLabel}`, value: todayTotal, note: 'transactions received',             color: 'text-gray-900'   },
+          { label: `${dayLabel} GHS`,   value: `GHS ${fmt(todayGHS)}`, note: 'total value',           color: 'text-gray-900'   },
         ].map(({ label, value, note, color }) => (
           <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500 mb-1">{label}</p>

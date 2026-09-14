@@ -1138,6 +1138,11 @@ export interface Reconciliation {
 }
 
 export interface DashboardStats {
+  /** Date the headline figures cover — the latest date with transfers. */
+  businessDate?: string;
+  /** The configured branch/sending business date. */
+  configuredBusinessDate?: string;
+  usingLatestActivity?: boolean;
   summary: {
     totalTransactions: number;
     pendingTransactions: number;

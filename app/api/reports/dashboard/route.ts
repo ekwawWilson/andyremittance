@@ -42,14 +42,16 @@ export async function GET(request: NextRequest) {
       if (endDate) where.transactionDate.lte = new Date(endDate);
     }
 
-    // "Today" is the business date, full stop — never the wall clock, and never
-    // the most recent date that happens to have data. A branch showing yesterday's
-    // figures under a "today" heading is worse than showing an honest zero.
+    // The day these figures cover is the most recent date that actually has
+    // transfers, not the business date. Day-sheets are keyed in after the fact
+    // and carry the sending side's date, so the business date normally runs
+    // ahead of the newest transfer — anchoring to it reports zero while real
+    // work sits one or two days back.
     //
-    // Which business date depends on who is asking: a branch-scoped view follows
-    // that branch's own ReceivingPoint.serverDate, since each branch closes its
-    // day independently. Company-wide views follow the sending server date.
-    const [config, branch] = await Promise.all([
+    // The business date is kept as the fallback for an empty branch, and the
+    // date actually used is returned so the caller can label it rather than
+    // calling it "today".
+    const [config, branch, latestTx] = await Promise.all([
       prisma.systemConfig.findFirst(),
       receivingPointId
         ? prisma.receivingPoint.findUnique({
@@ -57,13 +59,22 @@ export async function GET(request: NextRequest) {
             select: { serverDate: true },
           })
         : Promise.resolve(null),
+      prisma.transaction.aggregate({ where, _max: { transactionDate: true } }),
     ]);
 
-    const businessDateStr = branch?.serverDate
+    const configuredDateStr = branch?.serverDate
       ? new Date(branch.serverDate).toISOString().split('T')[0]
       : config?.sendingServerDate
         ? new Date(config.sendingServerDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
+
+    const latestTxDateStr = latestTx._max.transactionDate
+      ? new Date(latestTx._max.transactionDate).toISOString().split('T')[0]
+      : null;
+
+    const businessDateStr = latestTxDateStr ?? configuredDateStr;
+    /** True when the figures cover a day earlier than the configured business date. */
+    const usingLatestActivity = businessDateStr !== configuredDateStr;
 
     const todayDate = new Date(`${businessDateStr}T00:00:00.000Z`);
     const tomorrowDate = new Date(todayDate);
@@ -196,8 +207,11 @@ export async function GET(request: NextRequest) {
         totalCAD: allCAD,
         totalGHS: allGHS,
       },
-      /** The business date the "today" figures cover. */
+      /** The date the headline figures actually cover (latest date with transfers). */
       businessDate: businessDateStr,
+      /** The branch/sending business date, for comparison. */
+      configuredBusinessDate: configuredDateStr,
+      usingLatestActivity,
       today: {
         count: todayCount,
         pending: todayPending,
