@@ -177,6 +177,8 @@ class ApiClient {
     endDate?: string;
     page?: number;
     limit?: number;
+    /** Also return status totals across the whole filtered set, not just this page. */
+    includeSummary?: boolean;
   }) {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
@@ -189,7 +191,12 @@ class ApiClient {
     if (params?.endDate) query.set('endDate', params.endDate);
     if (params?.page) query.set('page', params.page.toString());
     if (params?.limit) query.set('limit', params.limit.toString());
-    return this.request<{ transactions: Transaction[]; pagination: Pagination }>(`/api/transactions?${query}`);
+    if (params?.includeSummary) query.set('includeSummary', 'true');
+    return this.request<{
+      transactions: Transaction[];
+      pagination: Pagination;
+      summary?: Array<{ status: string; count: number; ghs: number; cad: number }>;
+    }>(`/api/transactions?${query}`);
   }
 
   async getTransaction(id: string) {

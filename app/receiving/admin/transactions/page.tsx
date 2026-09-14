@@ -59,6 +59,10 @@ export default function AdminTransactionsPage() {
 
   // Data
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Totals for the whole filtered set — the row list is capped at `limit`, so a
+  // summary counted from it would understate as soon as a range exceeds a page.
+  const [statusTotals, setStatusTotals] = useState<Array<{ status: string; count: number; ghs: number }>>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -79,9 +83,12 @@ export default function AdminTransactionsPage() {
       endDate: to,
       receivingPointId: user?.receivingPoint?.id || undefined,
       limit: 200,
+      includeSummary: true,
     });
     if (res.success && res.data) {
       setTransactions(res.data.transactions);
+      setStatusTotals(res.data.summary ?? []);
+      setTotalCount(res.data.pagination?.total ?? res.data.transactions.length);
     } else {
       setError(res.error ?? 'Failed to load transactions');
     }
@@ -137,6 +144,22 @@ export default function AdminTransactionsPage() {
   const fmtGHS = (n: number) => `GHS ${n.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
   const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-GH', { day: '2-digit', month: 'short', year: 'numeric' });
 
+  // Summary over exactly what the table is showing, so the totals always agree
+  // with the rows beneath them rather than with some wider unfiltered set.
+  const summary = (() => {
+    const pick = (statuses: string[]) => {
+      const rows = statusTotals.filter((g) => statuses.includes(g.status));
+      return { count: rows.reduce((a, g) => a + g.count, 0), value: rows.reduce((a, g) => a + g.ghs, 0) };
+    };
+    return {
+      all:      { count: totalCount, value: statusTotals.reduce((a, g) => a + g.ghs, 0) },
+      // Received but not yet handed over — what the branch still owes.
+      awaiting: pick(['SYNCED', 'PARTIAL_PAYMENT']),
+      paid:     pick(['PAID']),
+      held:     pick(['FLAGGED', 'VOID', 'CANCELLED']),
+    };
+  })();
+
   const actionLabel: Record<ActionType, string> = {
     FLAGGED: 'Flag with Issue',
     RESTORE: 'Restore Transaction',
@@ -154,7 +177,29 @@ export default function AdminTransactionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Transaction Management</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Review and hold receiving transactions with issues</p>
+        <p className="text-sm text-gray-400 mt-0.5">
+          {canFlag
+            ? 'Review and hold receiving transactions with issues'
+            : 'Review the transactions received at this branch'}
+        </p>
+      </div>
+
+      {/* Summary — reflects the filters currently applied */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Received',         s: summary.all,      color: 'text-gray-900'    },
+          { label: 'Awaiting payout',  s: summary.awaiting, color: summary.awaiting.count > 0 ? 'text-amber-600' : 'text-gray-900' },
+          { label: 'Paid',             s: summary.paid,     color: 'text-emerald-600' },
+          { label: 'Held / cancelled', s: summary.held,     color: summary.held.count > 0 ? 'text-red-600' : 'text-gray-900' },
+        ].map((k) => (
+          <div key={k.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{k.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${k.color}`}>{k.s.count}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              GHS {k.s.value.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+        ))}
       </div>
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}

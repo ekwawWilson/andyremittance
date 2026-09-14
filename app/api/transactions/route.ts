@@ -118,7 +118,11 @@ export async function GET(request: NextRequest) {
       if (endDate) where.transactionDate.lte = new Date(endDate);
     }
 
-    const [transactions, total] = await Promise.all([
+    // Opt-in totals across the WHOLE filtered set, not just the page. A summary
+    // built from the returned rows silently caps at `limit` and understates.
+    const wantSummary = searchParams.get('includeSummary') === 'true';
+
+    const [transactions, total, statusGroups] = await Promise.all([
       prisma.transaction.findMany({
         where,
         include: {
@@ -143,6 +147,14 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.transaction.count({ where }),
+      wantSummary
+        ? prisma.transaction.groupBy({
+            by: ['status'],
+            where,
+            _count: true,
+            _sum: { ghsAmount: true, cadAmount: true },
+          })
+        : Promise.resolve(null),
     ]);
 
     return successResponse({
@@ -153,6 +165,16 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / limit),
       },
+      ...(statusGroups
+        ? {
+            summary: statusGroups.map((g) => ({
+              status: g.status,
+              count: g._count,
+              ghs: Number(g._sum.ghsAmount ?? 0),
+              cad: Number(g._sum.cadAmount ?? 0),
+            })),
+          }
+        : {}),
     });
   } catch (error) {
     console.error('Get transactions error:', error);
