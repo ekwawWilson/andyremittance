@@ -111,14 +111,26 @@ export async function GET(request: NextRequest) {
           where: vaultWhere,
           select: { id: true, accountName: true, accountCode: true, balance: true },
         }),
-        // The last resolved reconciliation gives the opening balance for the form.
+        // Metadata only (date of the last approved reconciliation) — the AMOUNT
+        // used for opening balance is derived from the ledger below, never from
+        // this self-reported figure. See the comment on the reconciliation
+        // submission route for why: a ledger entry restating the same cash as a
+        // "transfer in" on a later day would otherwise be counted twice.
         prisma.tellerReconciliation.findFirst({
           where: { tellerId: userId, status: { in: ['COMPLETED', 'APPROVED'] } },
           orderBy: [{ reconciliationDate: 'desc' }, { createdAt: 'desc' }],
-          select: { actualClosing: true, reconciliationDate: true },
+          select: { reconciliationDate: true },
         }),
         resolveBusinessDate,
       ]);
+
+    // Opening balance is the till's own running total as of the instant before
+    // this business day starts — tamper-proof, since it is nothing more than the
+    // sum of every entry ever posted against the till up to that point.
+    const openingBalanceFromLedger = await ledgerService.getLedgerBalanceAsOf(
+      till.id,
+      new Date(dayStart.getTime() - 1)
+    );
 
     // Judged against the branch's business date, not the wall clock — otherwise a
     // teller working past midnight is told they have not reconciled yet.
@@ -143,12 +155,13 @@ export async function GET(request: NextRequest) {
       balance: closingBalance,
       statement,
       vaults,
-      priorClosing: lastApprovedRecon
-        ? {
-            amount: Number(lastApprovedRecon.actualClosing),
-            date: lastApprovedRecon.reconciliationDate,
-          }
-        : null,
+      // Always populated from the ledger, even for a teller's first-ever
+      // reconciliation — a till can genuinely hold cash (e.g. an initial load)
+      // before any reconciliation has ever been submitted against it.
+      priorClosing: {
+        amount: openingBalanceFromLedger,
+        date: lastApprovedRecon?.reconciliationDate ?? null,
+      },
       isHistorical: !!dateParam || isPeriod,
       isPeriod,
       historicalDate: isPeriod ? null : (dateParam ?? null),

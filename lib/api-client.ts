@@ -1407,7 +1407,7 @@ export interface TillStatus {
   balance: number;
   statement: TillStatementEntry[];
   vaults: { id: string; accountName: string; accountCode: string; balance: number }[];
-  priorClosing: { amount: number; date: string } | null;
+  priorClosing: { amount: number; date: string | null } | null;
   isHistorical?: boolean;
   isPeriod?: boolean;
   historicalDate?: string | null;

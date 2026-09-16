@@ -53,75 +53,59 @@ async function deriveTellerLedgerFigures(
     throw new Error('Teller till not found');
   }
 
-  const lastResolvedRecon = await prisma.tellerReconciliation.findFirst({
-    where: {
-      tellerId,
-      reconciliationDate: { lt: businessDate },
-      status: { in: ['COMPLETED', 'APPROVED'] },
-    },
-    orderBy: [
-      { reconciliationDate: 'desc' },
-      { createdAt: 'desc' },
-    ],
-    select: {
-      actualClosing: true,
-    },
-  });
-
-  const entries = await prisma.ledgerEntry.findMany({
-    where: {
-      OR: [
-        { debitAccountId: till.id },
-        { creditAccountId: till.id },
-      ],
-      entryDate: {
-        gte: businessDate,
-        lte: dayEnd,
+  const [entries, priorEntries] = await Promise.all([
+    prisma.ledgerEntry.findMany({
+      where: {
+        OR: [
+          { debitAccountId: till.id },
+          { creditAccountId: till.id },
+        ],
+        entryDate: {
+          gte: businessDate,
+          lte: dayEnd,
+        },
       },
-    },
-    select: {
-      amount: true,
-      entryType: true,
-      debitAccountId: true,
-      creditAccountId: true,
-    },
-    orderBy: [
-      { entryDate: 'asc' },
-      { createdAt: 'asc' },
-    ],
-  });
-
-  // The previous signed-off closing balance is the authoritative opening. When a
-  // teller has never reconciled there is none — falling back to zero would show
-  // the whole till as a variance on their first submission, so derive the true
-  // opening from everything that moved through the till before today.
-  let openingBalance: number;
-  if (lastResolvedRecon) {
-    openingBalance = Number(lastResolvedRecon.actualClosing);
-  } else {
-    const priorEntries = await prisma.ledgerEntry.findMany({
+      select: {
+        amount: true,
+        entryType: true,
+        debitAccountId: true,
+        creditAccountId: true,
+      },
+      orderBy: [
+        { entryDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    }),
+    // Opening balance is always the ledger's own running total up to the start
+    // of the business day — never a teller-reported actualClosing figure. Those
+    // two SHOULD agree when a reconciliation's variance was posted cleanly, but
+    // trusting the reported number breaks the moment any entry after it restates
+    // the same cash — e.g. a "Load Till" labelled "opening balance" — which then
+    // gets counted twice: once as the trusted opening, once again as today's
+    // transfer. The till's balance is provably self-consistent (it is nothing
+    // more than the sum of every entry ever posted against it), so deriving
+    // opening the same way is tamper-proof and cannot double-count.
+    prisma.ledgerEntry.findMany({
       where: {
         OR: [{ debitAccountId: till.id }, { creditAccountId: till.id }],
         entryDate: { lt: businessDate },
       },
       select: { amount: true, debitAccountId: true },
-    });
-    openingBalance = priorEntries.reduce(
-      (sum, e) => sum + (e.debitAccountId === till.id ? Number(e.amount) : -Number(e.amount)),
-      0
-    );
-  }
+    }),
+  ]);
+
+  const openingBalance = priorEntries.reduce(
+    (sum, e) => sum + (e.debitAccountId === till.id ? Number(e.amount) : -Number(e.amount)),
+    0
+  );
 
   let transfersIn = 0;
   let paymentsMade = 0;
   let returnsToVault = 0;
-  let netMovement = 0;
 
   for (const entry of entries) {
     const amount = Number(entry.amount);
     const isDebit = entry.debitAccountId === till.id;
-
-    netMovement += isDebit ? amount : -amount;
 
     if (entry.entryType === 'DISBURSEMENT') {
       // A disbursement credits the till; an approved reversal debits it back.
@@ -139,12 +123,17 @@ async function deriveTellerLedgerFigures(
     // breakdown — they correct the prior day's balance, not today's movements.
   }
 
+  // Built from exactly the four figures shown on the reconciliation form, so the
+  // arithmetic the teller signs off on is the arithmetic the variance is computed
+  // from. Deriving it from net movement instead silently folded in RECONCILIATION
+  // variance adjustments, which the breakdown above deliberately excludes — the
+  // form then showed four numbers that did not add up to its own expected closing.
   return {
     openingBalance,
     vaultTransfersIn: transfersIn,
     paymentsMade,
     returnsToVault,
-    expectedClosing: openingBalance + netMovement,
+    expectedClosing: openingBalance + transfersIn - paymentsMade - returnsToVault,
   };
 }
 
