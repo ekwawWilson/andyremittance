@@ -23,6 +23,19 @@ export function generateShortTransactionCode(date: Date, entropy?: string): stri
   return `${prefix}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
 }
 
+/**
+ * The shared prefix of every STANDARD code for a given calendar day — "A1310-".
+ *
+ * Codes carry no year, so this prefix spans the same day-and-month in EVERY year.
+ * Anything allocating codes must check the whole prefix, not just its own
+ * transaction date, or it will hand out a code another year already took.
+ */
+export function transactionCodeDayPrefix(date: Date): string {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `A${day}${month}-`;
+}
+
 export function generateTransactionCode(
   date: Date,
   type: 'STANDARD' | 'ADDITIONAL' = 'STANDARD',

@@ -21,7 +21,11 @@
 import { createHash, randomUUID } from 'crypto';
 import prisma from '@/lib/db/prisma';
 import { PrismaClient, Prisma } from '@prisma/client';
-import { generateShortTransactionCode, generateTransactionCode } from '@/lib/utils/transaction-code';
+import {
+  generateShortTransactionCode,
+  generateTransactionCode,
+  transactionCodeDayPrefix,
+} from '@/lib/utils/transaction-code';
 import { tidyName, type ParsedReceivingMode } from '@/lib/services/excel-import.parser';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -214,8 +218,14 @@ export class ExcelImportService {
         select: { id: true, accountCode: true },
       }),
       prisma.sender.findMany({ select: { id: true, firstName: true, lastName: true } }),
+      // Scoped by CODE PREFIX, not by transactionDate. transactionCode is
+      // globally unique but carries no year, so "A1310-" is one 1000-wide space
+      // shared by 13 October in every year whose weekday letter matches — and
+      // Tuesday and Thursday both letter as "T". Filtering by transactionDate
+      // returned nothing for a fresh day and let the generator re-hand out codes
+      // another year already held, failing the import on the unique constraint.
       prisma.transaction.findMany({
-        where: { transactionDate: businessDate },
+        where: { transactionCode: { startsWith: transactionCodeDayPrefix(businessDate) } },
         select: { transactionCode: true },
       }),
       prisma.exchangeRate.findUnique({ where: { date: businessDate } }),
@@ -262,7 +272,9 @@ export class ExcelImportService {
         if (!usedCodes.has(code)) { usedCodes.add(code); return code; }
       }
       throw new Error(
-        `Ran out of unique transaction codes for ${input.transactionDate} (the daily code space holds 1000).`
+        `Ran out of unique transaction codes for ${input.transactionDate}. Codes carry no ` +
+        `year, so the ${transactionCodeDayPrefix(businessDate)} space holds 1000 across every ` +
+        `year sharing that day and weekday letter.`
       );
     };
 
