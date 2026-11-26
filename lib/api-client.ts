@@ -1518,11 +1518,36 @@ export interface SubPayment {
   receivingPointId?: string;
 }
 
+export interface SubPaymentAllocation {
+  subPaymentId: string;
+  transactionId: string;
+  transactionCode: string;
+  ghsAmount: number;
+  remaining: number;
+  isFullyPaid: boolean;
+}
+
 export interface SubPaymentResult {
   subPayment: SubPayment;
+  /** How the payout was split across the sender's open loads (oldest first). */
+  allocations: SubPaymentAllocation[];
+  /** Totals for the transaction the payout was opened on. */
   totalDisbursed: number;
   remaining: number;
   isFullyPaid: boolean;
+  /** Combined remaining across all of the sender's open loads at this branch. */
+  senderRemaining: number;
+  senderFullyPaid: boolean;
+}
+
+export interface SenderOpenLoad {
+  id: string;
+  transactionCode: string;
+  status: string;
+  transactionDate: string;
+  ghsAmount: number;
+  disbursed: number;
+  remaining: number;
 }
 
 export interface SubPaymentListResult {
@@ -1530,6 +1555,9 @@ export interface SubPaymentListResult {
   subPayments: SubPayment[];
   totalDisbursed: number;
   remaining: number;
+  /** Sender's open loads at this branch, oldest first — payouts clear these in order. */
+  openLoads: SenderOpenLoad[];
+  senderRemaining: number;
 }
 
 export interface SubPaymentReportEntry extends SubPayment {
