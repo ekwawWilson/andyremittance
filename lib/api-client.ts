@@ -1054,6 +1054,12 @@ export interface Transaction {
   receiversDeferred?: boolean;
   cadAmount: number;
   ghsAmount: number;
+  /** Balance brought forward from the sender's older part-paid transfer(s). */
+  carriedInGHS?: number;
+  /** Balance moved out of this transfer into a newer one. */
+  carriedOutGHS?: number;
+  carriedForwardToId?: string | null;
+  carriedForwardAt?: string | null;
   exchangeRateUsed: number;
   paymentMethod: 'CASH' | 'E_TRANSFER' | 'SPLIT';
   amountPaidCAD: number;
@@ -1518,46 +1524,43 @@ export interface SubPayment {
   receivingPointId?: string;
 }
 
-export interface SubPaymentAllocation {
-  subPaymentId: string;
-  transactionId: string;
-  transactionCode: string;
-  ghsAmount: number;
-  remaining: number;
-  isFullyPaid: boolean;
-}
-
 export interface SubPaymentResult {
   subPayment: SubPayment;
-  /** How the payout was split across the sender's open loads (oldest first). */
-  allocations: SubPaymentAllocation[];
-  /** Totals for the transaction the payout was opened on. */
   totalDisbursed: number;
   remaining: number;
   isFullyPaid: boolean;
-  /** Combined remaining across all of the sender's open loads at this branch. */
-  senderRemaining: number;
-  senderFullyPaid: boolean;
 }
 
-export interface SenderOpenLoad {
+/** An earlier transfer of the same sender whose balance was carried into this one. */
+export interface CarriedFromTransfer {
   id: string;
   transactionCode: string;
-  status: string;
   transactionDate: string;
   ghsAmount: number;
+  carriedInGHS: number;
   disbursed: number;
-  remaining: number;
+  /** Balance that moved from this transfer into the newer one. */
+  carriedForward: number;
+  subPayments: SubPayment[];
 }
 
 export interface SubPaymentListResult {
-  transaction: { id: string; transactionCode: string; ghsAmount: number; status: string };
+  transaction: {
+    id: string;
+    transactionCode: string;
+    ghsAmount: number;
+    carriedInGHS: number;
+    carriedOutGHS: number;
+    status: string;
+    transactionDate: string;
+  };
   subPayments: SubPayment[];
   totalDisbursed: number;
+  /** ghsAmount + carriedInGHS - carriedOutGHS */
+  payable: number;
   remaining: number;
-  /** Sender's open loads at this branch, oldest first — payouts clear these in order. */
-  openLoads: SenderOpenLoad[];
-  senderRemaining: number;
+  /** Earlier transfers whose balance was brought forward into this one, oldest first. */
+  carriedFrom: CarriedFromTransfer[];
 }
 
 export interface SubPaymentReportEntry extends SubPayment {

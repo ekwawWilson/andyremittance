@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         by: ['status'],
         where,
         _count: true,
-        _sum: { cadAmount: true, ghsAmount: true },
+        _sum: { cadAmount: true, ghsAmount: true, carriedInGHS: true, carriedOutGHS: true },
       }),
       prisma.transaction.count({ where: cancelledWhere }),
       prisma.transaction.count({ where: todayCancelledWhere }),
@@ -170,7 +170,8 @@ export async function GET(request: NextRequest) {
       if (g.status === 'PENDING') pendingTransactions = g._count;
       else if (g.status === 'SYNCED' || g.status === 'PARTIAL_PAYMENT') {
         syncedTransactions += g._count;
-        syncedGHS += Number(g._sum.ghsAmount ?? 0);
+        // Payable = sent + carried in from older transfers - carried out to newer ones
+        syncedGHS += Number(g._sum.ghsAmount ?? 0) + Number(g._sum.carriedInGHS ?? 0) - Number(g._sum.carriedOutGHS ?? 0);
       }
       else if (g.status === 'PAID') paidTransactions = g._count;
     }

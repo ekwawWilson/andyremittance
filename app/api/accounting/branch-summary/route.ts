@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           status: 'PAID',
           paidAt: { gte: fromDate, lte: toDate },
         },
-        _sum: { ghsAmount: true },
+        _sum: { ghsAmount: true, carriedInGHS: true, carriedOutGHS: true },
         _count: true,
       }),
       // Expense journal lines in period (GHS)
@@ -124,7 +124,10 @@ export async function GET(request: NextRequest) {
       totalTillBalance: tellerSummary.reduce((s, t) => s + t.tillBalance, 0),
       disbursements: {
         count:    disbursementData._count,
-        totalGHS: Number(disbursementData._sum.ghsAmount ?? 0),
+        totalGHS:
+          Number(disbursementData._sum.ghsAmount ?? 0) +
+          Number(disbursementData._sum.carriedInGHS ?? 0) -
+          Number(disbursementData._sum.carriedOutGHS ?? 0),
       },
       reconciliation: {
         completed: completedRecons.length,

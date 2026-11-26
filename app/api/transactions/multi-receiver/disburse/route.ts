@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/lib/utils/api-response';
 import { ensureReceivingPointAccess, requirePermission } from '@/lib/auth/permissions';
 import { LedgerService } from '@/lib/services/ledger.service';
 import prisma from '@/lib/db/prisma';
+import { payableGHS } from '@/lib/services/carry-forward.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate total GHS — allocations must match transaction amount (±1 pesewa)
-    const totalGHS = Number(transaction.ghsAmount);
+    // Includes any balance carried in from the sender's older transfers
+    const totalGHS = payableGHS(transaction);
     const sumAllocated = allocations.reduce((s, a) => s + a.ghsAmount, 0);
     if (Math.abs(sumAllocated - totalGHS) > 0.01) {
       return errorResponse(

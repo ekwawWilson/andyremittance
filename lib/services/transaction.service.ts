@@ -3,6 +3,7 @@ import { generateUniqueTransactionCode } from '@/lib/utils/transaction-code';
 import { LedgerService, TxClient } from './ledger.service';
 import { PaymentMethod, ReceivingMode, TransactionCodeType } from '@prisma/client';
 import { DisbursementDetailsInput, normalizeDisbursementDetails } from '@/lib/validators/disbursement';
+import { payableGHS } from '@/lib/services/carry-forward.service';
 
 export class TransactionService {
   private ledgerService: LedgerService;
@@ -663,6 +664,8 @@ export class TransactionService {
         id: string;
         status: string;
         ghsAmount: string;
+        carriedInGHS: string;
+        carriedOutGHS: string;
         receivingPointId: string;
         receivingMode: string;
         codeType: string;
@@ -675,7 +678,8 @@ export class TransactionService {
         momoNumber: string | null;
         momoName: string | null;
       }>>`
-        SELECT id, status, "ghsAmount", "receivingPointId", "receivingMode",
+        SELECT id, status, "ghsAmount", "carriedInGHS", "carriedOutGHS",
+               "receivingPointId", "receivingMode",
                "codeType", "transactionCode",
                "bankName", "bankAccountNo", "bankAccountName",
                "cashPhoneNumber", "cashGhanaCardNumber",
@@ -725,10 +729,10 @@ export class TransactionService {
         throw new Error('Mobile money disbursement requires MoMo number and account name');
       }
 
-      const amountToDisburse =
-        row.status === 'PARTIAL_PAYMENT'
-          ? Math.max(0, Number(row.ghsAmount) - subPayments.reduce((s, sp) => s + Number(sp.ghsAmount), 0))
-          : Number(row.ghsAmount);
+      // Payable includes any balance carried in from the sender's older transfers
+      const payableCents = Math.round(payableGHS(row) * 100);
+      const paidCents = subPayments.reduce((s, sp) => s + Math.round(Number(sp.ghsAmount) * 100), 0);
+      const amountToDisburse = Math.max(0, payableCents - paidCents) / 100;
 
       if (amountToDisburse <= 0) throw new Error('No outstanding balance remains on this transaction');
 

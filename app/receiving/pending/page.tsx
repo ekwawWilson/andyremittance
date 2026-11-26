@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { apiClient, Transaction, Notification, SubPayment, SenderOpenLoad, TransactionReceiver, TillStatus } from '@/lib/api-client';
+import { apiClient, Transaction, Notification, SubPayment, CarriedFromTransfer, TransactionReceiver, TillStatus } from '@/lib/api-client';
 import { TransactionStatusBadge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -89,14 +89,25 @@ function disbursedAmount(t?: Transaction | null) {
   return (t?.subPayments ?? []).reduce((sum, sp) => sum + Number(sp.ghsAmount), 0);
 }
 
+// Total payable on a transfer: what was sent, plus any balance brought forward
+// from the sender's older part-paid transfers, minus anything carried out.
+function payableAmount(t?: Transaction | null) {
+  if (!t) return 0;
+  const cents =
+    Math.round(Number(t.ghsAmount) * 100) +
+    Math.round(Number(t.carriedInGHS ?? 0) * 100) -
+    Math.round(Number(t.carriedOutGHS ?? 0) * 100);
+  return cents / 100;
+}
+
 function outstandingAmount(t?: Transaction | null) {
   if (!t) return 0;
-  return Math.max(0, Number(t.ghsAmount) - disbursedAmount(t));
+  return Math.max(0, payableAmount(t) - disbursedAmount(t));
 }
 
 function pendingAmount(t?: Transaction | null) {
   if (!t) return 0;
-  return t.status === 'PARTIAL_PAYMENT' ? outstandingAmount(t) : Number(t.ghsAmount);
+  return t.status === 'PARTIAL_PAYMENT' ? outstandingAmount(t) : payableAmount(t);
 }
 
 function buildPaymentDetailsState(t?: Transaction | null): PaymentDetailsState {
@@ -344,8 +355,9 @@ export default function PendingPaymentsPage() {
   const [subPayLoading, setSubPayLoading] = useState(false);
   const [subPayError, setSubPayError] = useState('');
   const [subPayRemaining, setSubPayRemaining] = useState(0);
-  // All open loads for this sender at this branch — payouts clear these oldest-first
-  const [subPayOpenLoads, setSubPayOpenLoads] = useState<SenderOpenLoad[]>([]);
+  // Earlier transfers of the same sender whose balance was brought forward into this one
+  const [subPayCarriedFrom, setSubPayCarriedFrom] = useState<CarriedFromTransfer[]>([]);
+  const [subPayExpanded, setSubPayExpanded] = useState<Set<string>>(new Set());
 
   // Collapsed state per branch id
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -447,8 +459,8 @@ export default function PendingPaymentsPage() {
         printReceipt(paidTx, paidTx.receivingPoint?.name ?? user?.receivingPoint?.name ?? 'Branch', {
           receivingMode: 'CASH',
           amountPaidGHS: txSnapshot?.status === 'PARTIAL_PAYMENT'
-            ? Number(paidTx.ghsAmount) - disbursedAmount(paidTx)  // outstanding at time of final call
-            : Number(paidTx.ghsAmount),
+            ? payableAmount(paidTx) - disbursedAmount(paidTx)  // outstanding at time of final call
+            : payableAmount(paidTx),
           cashPhoneNumber: payForm.cashPhoneNumber,
           cashGhanaCardNumber: payForm.cashGhanaCardNumber,
         });
@@ -482,13 +494,14 @@ export default function PendingPaymentsPage() {
     setSubPayForm(buildPaymentDetailsState(t));
     setSubPayLoading(true);
     const res = await apiClient.getSubPayments(t.id);
+    setSubPayExpanded(new Set());
     if (res.success && res.data) {
       setSubPayments(res.data.subPayments);
-      setSubPayOpenLoads(res.data.openLoads ?? []);
-      setSubPayRemaining(res.data.senderRemaining ?? res.data.remaining);
+      setSubPayCarriedFrom(res.data.carriedFrom ?? []);
+      setSubPayRemaining(res.data.remaining);
     } else {
       setSubPayments([]);
-      setSubPayOpenLoads([]);
+      setSubPayCarriedFrom([]);
       setSubPayRemaining(pendingAmount(t));
     }
     setSubPayLoading(false);
@@ -530,14 +543,11 @@ export default function PendingPaymentsPage() {
       momoName: subPayForm.momoName || undefined,
     });
     if (res.success && res.data) {
-      setSubPayRemaining(res.data.senderRemaining);
+      setSubPayRemaining(res.data.remaining);
       setSubPayAmount('');
       setSubPayNotes('');
       const listRes = await apiClient.getSubPayments(subPayTx.id);
-      if (listRes.success && listRes.data) {
-        setSubPayments(listRes.data.subPayments);
-        setSubPayOpenLoads(listRes.data.openLoads ?? []);
-      }
+      if (listRes.success && listRes.data) setSubPayments(listRes.data.subPayments);
       if (subPayForm.receivingMode === 'CASH') {
         printReceipt(subPayTx, subPayTx.receivingPoint?.name ?? user?.receivingPoint?.name ?? 'Branch', {
           title: 'PARTIAL PAYMENT RECEIPT',
@@ -551,8 +561,7 @@ export default function PendingPaymentsPage() {
           notes: subPayNotes || undefined,
         });
       }
-      if (res.data.senderFullyPaid) { setSubPayTx(null); fetchPending(); }
-      else if (res.data.allocations.some((a) => a.isFullyPaid || a.transactionId !== subPayTx.id)) fetchPending();
+      if (res.data.isFullyPaid) { setSubPayTx(null); fetchPending(); }
     } else {
       setSubPayError(res.error || 'Failed');
     }
@@ -1109,7 +1118,10 @@ export default function PendingPaymentsPage() {
                                 {/* Amount */}
                                 <div className="flex items-center justify-between mt-1.5">
                                   <div>
-                                    <span className="font-bold text-emerald-700">{fmtGHS(Number(t.ghsAmount))}</span>
+                                    <span className="font-bold text-emerald-700">{fmtGHS(payableAmount(t))}</span>
+                                    {Number(t.carriedInGHS ?? 0) > 0 && (
+                                      <span className="block text-[10px] text-blue-700">incl. {fmtGHS(Number(t.carriedInGHS))} brought forward</span>
+                                    )}
                                     {t.status === 'PARTIAL_PAYMENT' && (
                                       <span className="ml-2 text-[11px] text-amber-700 font-medium">
                                         Outstanding: {fmtGHS(outstandingAmount(t))}
@@ -1230,7 +1242,10 @@ export default function PendingPaymentsPage() {
                               )}
                               {showCol('amount') && (
                               <td className="py-4 px-4">
-                                <span className="font-bold text-emerald-700 text-base">{fmtGHS(Number(t.ghsAmount))}</span>
+                                <span className="font-bold text-emerald-700 text-base">{fmtGHS(payableAmount(t))}</span>
+                                {Number(t.carriedInGHS ?? 0) > 0 && (
+                                  <span className="block text-[10px] text-blue-700">incl. {fmtGHS(Number(t.carriedInGHS))} brought forward</span>
+                                )}
                                 {t.status === 'PARTIAL_PAYMENT' && (
                                   <p className="text-[11px] text-amber-700 font-medium mt-1">
                                     Outstanding: {fmtGHS(outstandingAmount(t))}
@@ -1359,7 +1374,7 @@ export default function PendingPaymentsPage() {
               <div className="border-t border-amber-200 pt-2 flex justify-between text-sm">
                 <span className="text-gray-500">Amount</span>
                 <span className="font-bold text-emerald-700 text-base">
-                  {fmtGHS(verifyTx.status === 'PARTIAL_PAYMENT' ? outstandingAmount(verifyTx) : Number(verifyTx.ghsAmount))}
+                  {fmtGHS(verifyTx.status === 'PARTIAL_PAYMENT' ? outstandingAmount(verifyTx) : payableAmount(verifyTx))}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -1463,13 +1478,102 @@ export default function PendingPaymentsPage() {
       </Modal>
 
       {/* Sub-payment modal */}
-      <Modal isOpen={!!subPayTx} onClose={() => setSubPayTx(null)} title={`Partial Payment — ${subPayTx?.transactionCode}`} size="sm">
+      <Modal isOpen={!!subPayTx} onClose={() => setSubPayTx(null)} title={`Partial Payment — ${subPayTx?.transactionCode}`} size={subPayCarriedFrom.length > 0 ? 'xl' : 'sm'}>
         {subPayTx && (
           <div className="space-y-4">
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm flex justify-between font-medium">
-              <span className="text-gray-500">Total Amount</span>
-              <span className="font-bold text-gray-800">{fmtGHS(Number(subPayTx.ghsAmount))}</span>
-            </div>
+            {subPayCarriedFrom.length > 0 ? (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">This transfer ({subPayTx.transactionCode})</span>
+                  <span className="font-semibold text-gray-800">{fmtGHS(Number(subPayTx.ghsAmount))}</span>
+                </div>
+                <div className="flex justify-between text-blue-700">
+                  <span>Brought forward from earlier transfers</span>
+                  <span className="font-semibold">+ {fmtGHS(Number(subPayTx.carriedInGHS ?? 0))}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-1 font-medium">
+                  <span className="text-gray-700">Total Amount</span>
+                  <span className="font-bold text-gray-900">{fmtGHS(payableAmount(subPayTx))}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm flex justify-between font-medium">
+                <span className="text-gray-500">Total Amount</span>
+                <span className="font-bold text-gray-800">{fmtGHS(Number(subPayTx.ghsAmount))}</span>
+              </div>
+            )}
+
+            {subPayCarriedFrom.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-blue-800">
+                  Earlier transfers brought forward ({subPayCarriedFrom.length}) — their balance is now paid from this transfer
+                </p>
+                {subPayCarriedFrom.map((c) => {
+                  const isOpen = subPayExpanded.has(c.id);
+                  return (
+                    <div key={c.id} className="border border-blue-200 rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setSubPayExpanded((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                          return next;
+                        })}
+                        className="w-full px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-left text-xs bg-blue-50"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-gray-400">{isOpen ? '▾' : '▸'}</span>
+                          <span className="font-bold text-gray-800">{c.transactionCode}</span>
+                          <span className="text-gray-500">{new Date(c.transactionDate).toLocaleDateString()}</span>
+                          <span className="text-gray-400">· {c.subPayments.length} payment{c.subPayments.length === 1 ? '' : 's'}</span>
+                        </span>
+                        <span className="flex flex-wrap gap-3 text-gray-600">
+                          <span>Transfer {fmtGHS(c.ghsAmount + c.carriedInGHS)}</span>
+                          <span className="text-emerald-700">Paid {fmtGHS(c.disbursed)}</span>
+                          <span className="font-bold text-blue-800">Brought forward {fmtGHS(c.carriedForward)}</span>
+                        </span>
+                      </button>
+                      {isOpen && (
+                        c.subPayments.length === 0 ? (
+                          <p className="px-3 py-2 text-xs text-gray-400 border-t border-blue-100">No disbursements.</p>
+                        ) : (
+                          <table className="w-full text-xs border-t border-blue-100">
+                            <thead>
+                              <tr className="bg-white border-b border-gray-100">
+                                <th className="text-left py-1.5 px-3 text-gray-500 font-semibold">#</th>
+                                <th className="text-left py-1.5 px-3 text-gray-500 font-semibold">Receiver</th>
+                                <th className="text-right py-1.5 px-3 text-gray-500 font-semibold">GHS</th>
+                                <th className="text-left py-1.5 px-3 text-gray-500 font-semibold">Mode</th>
+                                <th className="text-left py-1.5 px-3 text-gray-500 font-semibold">By</th>
+                                <th className="text-left py-1.5 px-3 text-gray-500 font-semibold">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {c.subPayments.map((sp, j) => (
+                                <tr key={sp.id}>
+                                  <td className="py-1.5 px-3 text-gray-400">{j + 1}</td>
+                                  <td className="py-1.5 px-3 text-gray-600">
+                                    <p>{sp.receiverName || '—'}</p>
+                                    <p className="text-[11px] text-gray-400">{sp.receiverPhone || '—'}</p>
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-semibold text-emerald-700">{fmtGHS(Number(sp.ghsAmount))}</td>
+                                  <td className="py-1.5 px-3 text-gray-500">{sp.receivingMode || '—'}</td>
+                                  <td className="py-1.5 px-3 text-gray-600">{sp.paidByName}</td>
+                                  <td className="py-1.5 px-3 text-gray-400">{new Date(sp.paidAt).toLocaleString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+                {subPayments.length > 0 && (
+                  <p className="text-xs font-semibold text-gray-700 pt-1">Payments on this transfer ({subPayTx.transactionCode})</p>
+                )}
+              </div>
+            )}
 
             {subPayments.length > 0 && (
               <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -1503,37 +1607,8 @@ export default function PendingPaymentsPage() {
               </div>
             )}
 
-            {subPayOpenLoads.length > 1 && (
-              <div className="border border-blue-200 bg-blue-50 rounded-xl overflow-hidden">
-                <p className="px-3 pt-2.5 pb-1.5 text-xs font-semibold text-blue-800">
-                  This sender has {subPayOpenLoads.length} open loads. Payments are taken from the oldest load first, so older balances clear before newer ones.
-                </p>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-y border-blue-200 bg-blue-100/60">
-                      <th className="text-left py-1.5 px-3 text-blue-700 font-semibold">Load</th>
-                      <th className="text-left py-1.5 px-3 text-blue-700 font-semibold">Date</th>
-                      <th className="text-right py-1.5 px-3 text-blue-700 font-semibold">Remaining</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-blue-100">
-                    {subPayOpenLoads.map((l, i) => (
-                      <tr key={l.id} className={l.id === subPayTx.id ? 'font-semibold' : ''}>
-                        <td className="py-1.5 px-3 text-gray-700">
-                          {l.transactionCode}
-                          {i === 0 && <span className="ml-1.5 text-[10px] text-blue-700">(paid next)</span>}
-                        </td>
-                        <td className="py-1.5 px-3 text-gray-500">{new Date(l.transactionDate).toLocaleDateString()}</td>
-                        <td className="py-1.5 px-3 text-right text-gray-800">{fmtGHS(l.remaining)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
             <div className={`p-3 rounded-xl border text-sm flex justify-between font-semibold ${subPayRemaining <= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-              <span>{subPayOpenLoads.length > 1 ? 'Remaining (all open loads)' : 'Remaining'}</span>
+              <span>Remaining</span>
               <span>{fmtGHS(subPayRemaining)}</span>
             </div>
 

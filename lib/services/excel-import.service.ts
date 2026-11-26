@@ -27,6 +27,7 @@ import {
   transactionCodeDayPrefix,
 } from '@/lib/utils/transaction-code';
 import { tidyName, type ParsedReceivingMode } from '@/lib/services/excel-import.parser';
+import { carryForwardIntoMany } from '@/lib/services/carry-forward.service';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
@@ -449,6 +450,11 @@ export class ExcelImportService {
         if (newSenders.length) await db.sender.createMany({ data: newSenders });
         if (newReceivers.length) await db.receiver.createMany({ data: newReceivers });
         await db.transaction.createMany({ data: newTransactions });
+        // Part-paid older transfers of the same sender carry their balance into the new one
+        await carryForwardIntoMany(db, newTransactions.map((t) => t.id as string), {
+          userId: input.actor.userId,
+          userName: input.actor.userName,
+        });
         await db.journalEntry.createMany({ data: newJournals });
         await db.journalLine.createMany({ data: newJournalLines });
 

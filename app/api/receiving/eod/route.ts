@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           paidAt: { gte: businessDate, lt: nextDay },
           subPayments: { none: {} },
         },
-        _sum: { ghsAmount: true },
+        _sum: { ghsAmount: true, carriedInGHS: true, carriedOutGHS: true },
         _count: true,
       }),
       prisma.subPayment.aggregate({
@@ -170,7 +170,10 @@ export async function POST(request: NextRequest) {
     const disbursementStats = {
       _sum: {
         ghsAmount:
-          Number(singlePayouts._sum.ghsAmount ?? 0) + Number(instalments._sum.ghsAmount ?? 0),
+          Number(singlePayouts._sum.ghsAmount ?? 0) +
+          Number(singlePayouts._sum.carriedInGHS ?? 0) -
+          Number(singlePayouts._sum.carriedOutGHS ?? 0) +
+          Number(instalments._sum.ghsAmount ?? 0),
       },
       _count: singlePayouts._count + instalments._count,
     };

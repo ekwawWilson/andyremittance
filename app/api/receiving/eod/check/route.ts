@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
         status: 'PAID',
         paidAt: { gte: businessDate, lt: nextDay },
       },
-      _sum: { ghsAmount: true },
+      _sum: { ghsAmount: true, carriedInGHS: true, carriedOutGHS: true },
       _count: true,
     });
 
@@ -147,7 +147,10 @@ export async function GET(request: NextRequest) {
       rejectedCount,
       tellerStatus,
       pendingTills,
-      totalDisbursedToday: Number(totalDisbursedToday._sum.ghsAmount ?? 0),
+      totalDisbursedToday:
+        Number(totalDisbursedToday._sum.ghsAmount ?? 0) +
+        Number(totalDisbursedToday._sum.carriedInGHS ?? 0) -
+        Number(totalDisbursedToday._sum.carriedOutGHS ?? 0),
       disbursementCount: totalDisbursedToday._count,
       alreadyClosed: !!existingEod,
       existingEod,

@@ -320,7 +320,19 @@ model Transaction {
   flaggedById    String?
   flaggedByName  String?
 
+  // Balance carry-forward between a sender's transfers at the same branch.
+  // When a new transfer arrives, a part-paid older transfer's balance moves
+  // into it. ghsAmount is never edited; the amount payable on a transfer is
+  //   ghsAmount + carriedInGHS - carriedOutGHS
+  carriedInGHS       Decimal      @default(0) @db.Decimal(10, 2)
+  carriedOutGHS      Decimal      @default(0) @db.Decimal(10, 2)
+  carriedForwardAt   DateTime?
+  carriedForwardTo   Transaction? @relation("CarryForward", fields: [carriedForwardToId], references: [id])
+  carriedForwardToId String?
+  carriedForwardFrom Transaction[] @relation("CarryForward")
+
   @@index([senderId])
+  @@index([carriedForwardToId])
   @@index([receiverId])
   @@index([receivingPointId])
   @@index([status])

@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       prisma.transaction.groupBy({
         by: ['receivingPointId', 'status'],
         where: { transactionDate: { gte: fromDate, lte: toDate } },
-        _sum:   { cadAmount: true, ghsAmount: true },
+        _sum:   { cadAmount: true, ghsAmount: true, carriedInGHS: true, carriedOutGHS: true },
         _count: true,
       }),
 
@@ -98,7 +98,8 @@ export async function GET(request: NextRequest) {
       txByBranch[id].totalGHS += Number(row._sum.ghsAmount ?? 0);
       if (row.status === 'PAID') {
         txByBranch[id].paidCount += row._count;
-        txByBranch[id].paidGHS   += Number(row._sum.ghsAmount ?? 0);
+        // Carried balances were paid on the newer transfer, not this one
+        txByBranch[id].paidGHS   += Number(row._sum.ghsAmount ?? 0) + Number(row._sum.carriedInGHS ?? 0) - Number(row._sum.carriedOutGHS ?? 0);
       }
       if (row.status === 'SYNCED')  txByBranch[id].syncedCount  += row._count;
       if (row.status === 'PENDING') txByBranch[id].pendingCount += row._count;

@@ -2,6 +2,7 @@ import prisma from '@/lib/db/prisma';
 import { TransactionCodeType, TransactionStatus, Prisma } from '@prisma/client';
 import { JournalService } from '@/lib/services/journal.service';
 import { LedgerService } from '@/lib/services/ledger.service';
+import { carryForwardIntoMany } from '@/lib/services/carry-forward.service';
 
 const journalService = new JournalService();
 const ledgerService = new LedgerService();
@@ -67,6 +68,11 @@ export class SyncService {
           ...(endOfDayRecordId ? { endOfDayRecordId } : {}),
         },
       });
+
+      // 1b. Part-paid older transfers of the same sender carry their balance into the new one
+      if (codeType !== 'ADDITIONAL') {
+        await carryForwardIntoMany(tx, transactionIds, { userId: systemUser.id, userName: 'End-of-day sync' });
+      }
 
       // 2. Fund the appropriate accounts
       if (codeType === 'ADDITIONAL') {

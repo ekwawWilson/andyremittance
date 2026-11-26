@@ -15,6 +15,15 @@ function fmt(n: number) {
 }
 function fmtNum(n: number) { return fmt(n); }
 
+// Payable on a transfer: sent amount + balance brought forward - balance carried out
+function payableGHS(t: Transaction) {
+  return (
+    Math.round(Number(t.ghsAmount) * 100) +
+    Math.round(Number(t.carriedInGHS ?? 0) * 100) -
+    Math.round(Number(t.carriedOutGHS ?? 0) * 100)
+  ) / 100;
+}
+
 function ModeBadge({ mode }: { mode: string }) {
   const map: Record<string, string> = {
     CASH: 'bg-emerald-100 text-emerald-800',
@@ -201,7 +210,7 @@ export default function DisbursementsPage() {
   const disbursedAmount = (t: Transaction): number => {
     const subs = t.subPayments;
     if (subs && subs.length > 0) return subs.reduce((s, sp) => s + Number(sp.ghsAmount), 0);
-    return Number(t.ghsAmount);
+    return payableGHS(t);
   };
 
   /** One column's value for one row — shared by the PDF and the workbook. */
@@ -211,7 +220,7 @@ export default function DisbursementsPage() {
       case 'sender':        return `${t.sender?.firstName ?? ''} ${t.sender?.lastName ?? ''}`.trim();
       case 'receiver':      return `${t.receiver?.firstName ?? ''} ${t.receiver?.lastName ?? ''}`.trim();
       case 'disbursed':     return fmt(disbursedAmount(t));
-      case 'total':         return fmt(Number(t.ghsAmount));
+      case 'total':         return fmt(payableGHS(t));
       case 'mode':          return t.receivingMode;
       case 'teller':        return t.paidByName || '';
       case 'paidAt':        return t.paidAt ? new Date(t.paidAt).toLocaleString('en-GH') : '';
@@ -495,7 +504,7 @@ export default function DisbursementsPage() {
                 {filtered.map((t) => {
                   const isPartial = t.status === 'PARTIAL_PAYMENT';
                   const disbursed = disbursedAmount(t);
-                  const total = Number(t.ghsAmount);
+                  const total = payableGHS(t);
                   const remaining = total - disbursed;
                   const subs = t.subPayments ?? [];
                   const isOpen = expanded.has(t.id);
@@ -597,7 +606,7 @@ export default function DisbursementsPage() {
                       const isPartial = t.status === 'PARTIAL_PAYMENT';
                       const isOpen = expanded.has(t.id);
                       const disbursed = disbursedAmount(t);
-                      const total = Number(t.ghsAmount);
+                      const total = payableGHS(t);
                       const remaining = total - disbursed;
                       return (
                         <>
